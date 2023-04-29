@@ -40,7 +40,7 @@ IndentCaseLabels: true
 IndentPPDirectives: AfterHash
 
 IndentRequiresClause: true
-IndentWidth: 3
+IndentWidth: 2
 
 IndentWrappedFunctionNames: true
 InsertBraces: true
@@ -54,7 +54,7 @@ Language: Cpp
 
 MaxEmptyLinesToKeep: 2
 
-NamespaceIndentation: All
+# NamespaceIndentation: All
 
 PointerAlignment: Left
 QualifierAlignment: Right
