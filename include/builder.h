@@ -1,24 +1,43 @@
+/// Copyright (c) 2023 Samir Bioud
+///
+/// Permission is hereby granted, free of charge, to any person obtaining a copy
+/// of this software and associated documentation files (the "Software"), to deal
+/// in the Software without restriction, including without limitation the rights
+/// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+/// copies of the Software, and to permit persons to whom the Software is
+/// furnished to do so, subject to the following conditions:
+///
+/// The above copyright notice and this permission notice shall be included in all
+/// copies or substantial portions of the Software.
+///
+/// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+/// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+/// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+/// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+/// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+/// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
+/// OR OTHER DEALINGS IN THE SOFTWARE.
+///
+
 #pragma once
 
-#include "state-machine-node.h"
+#include "node.h"
+#include "util/panic.h"
+#include "util/stringify.h"
 #include <algorithm>
 #include <concepts>
 #include <functional>
 #include <iostream>
-#include <set>
+#include <map>
 #include <sstream>
 #include <string>
 #include <type_traits>
 #include <vector>
 
-namespace regex_table::build_time {
+namespace regex_table {
 
 //
 // Build a mutable state machine
-//
-// this state machine is quite slow, and memory intensive
-// it is recommended to build this machine at compile time and
-// use the optimize()'d version at runtime
 //
 template <typename Value_T> struct MutableStateMachine {
 
@@ -55,6 +74,11 @@ template <typename Value_T> struct MutableStateMachine {
       m_cursors.push_back(c);
     }
 
+    return *this;
+  }
+
+  Self& match(MutableRegex pattern) {
+    merge_regex_into_machine(pattern);
     return *this;
   }
 
@@ -257,6 +281,14 @@ template <typename Value_T> struct MutableStateMachine {
     return *this;
   }
 
+  //
+  // Reset the cursors back to the root node
+  //
+  Self& goback() {
+    m_cursors = {0};
+    return *this;
+  }
+
   void print_dbg() {
 
     size_t idx = 0;
@@ -268,15 +300,13 @@ template <typename Value_T> struct MutableStateMachine {
 
       std::string terminal_msg = "A";
       if (is_terminal) {
-        if (std::is_same_v<Value_T, void>) {
+        if constexpr (std::is_same_v<Value_T, void>) {
           terminal_msg = "(terminal)";
         } else {
-          terminal_msg = "(terminal val: '" + stringify(node.value.value()) + "' )";
+          terminal_msg = "(terminal val: '" + mutils::stringify(node.value.value()) + "' )";
         }
       }
 
-      // bool is_cursor = false;
-      // bool is_cursor = node_index(node) == m_cursor_idx;
       std::cout << "#" << idx << " " << (is_terminal ? terminal_msg : "") << " " << (is_cursor ? "[cursor] " : "")
                 << ">>\n";
 
@@ -297,7 +327,6 @@ template <typename Value_T> struct MutableStateMachine {
 
   void optimize() {
     remove_duplicates();
-    remove_orphans();
     remove_blanks();
 
     // these passes invalidate cursors
@@ -305,33 +334,55 @@ template <typename Value_T> struct MutableStateMachine {
     m_cursors = {0};
   }
 
-protected:
-  // TODO: Move all of the stringify-related stuff to the mutils library
-  //       where it can be properly re-used
-  template <typename S, typename T> struct is_streamable {
-    template <typename SS, typename TT>
-    static auto test(int) -> decltype(std::declval<SS&>() << std::declval<TT>(), std::true_type());
-
-    template <typename, typename> static auto test(...) -> std::false_type;
-
-  public:
-    static bool const value = decltype(test<S, T>(0))::value;
-  };
-
-  template <typename T>
-  static std::string stringify(T val)
-    requires std::is_convertible_v<T, std::string>
-  {
-    return std::string(val);
+  //
+  // De-compactify the nodes of the tree
+  //
+  void expand() {
+    std::vector<Node_T> new_nodes;
+    m_expand(new_nodes);
+    m_nodes   = new_nodes;
+    m_cursors = {0};
   }
 
-  template <typename T>
-  static std::string stringify(T val)
-    requires is_streamable<std::stringstream, T>::value
-  {
-    std::stringstream ss;
-    ss << val;
-    return ss.str();
+protected:
+  size_t m_expand(std::vector<Node_T>& storage, size_t node = 0, std::map<size_t, size_t> branch_mappings = {}) {
+    // For this function, we walk the function and construct a new node for each node encountered
+    // without taking duplicate encoutners into account
+    //
+    // Implemented via depth-first search
+    //
+    // when a loop is encountered, make sure it points to a node on the current branch
+
+
+    auto root_idx = storage.size();
+
+    storage.push_back(Node_T());
+
+    branch_mappings[node] = root_idx;
+    storage[root_idx]     = m_nodes[node];
+    storage[root_idx].transitions.fill(0);
+    char c = 0;
+    for (auto t : m_nodes[node].transitions) {
+
+      if (t == 0) {
+        c++;
+        continue;
+      }
+
+      if (branch_mappings.find(t) == branch_mappings.end()) {
+
+
+        auto child_idx = m_expand(storage, t, branch_mappings);
+
+        storage[root_idx].transitions[c] = child_idx;
+      } else {
+        storage[root_idx].transitions[c] = branch_mappings[t];
+        // std::cout<< "Loop\n";
+      }
+      c++;
+    }
+
+    return root_idx;
   }
 
   //
@@ -471,6 +522,7 @@ protected:
   }
 
   void merge_regex_into_machine(MutableRegex regex) {
+    regex.expand();
 
     struct RegexMergeState {
       MutableRegex::Node_T& base_node;
@@ -481,6 +533,9 @@ protected:
 
     std::vector<RegexMergeState> merge_operation_queue;
     std::vector<bool> queued_nodes(regex.m_nodes.size(), false);
+
+    std::vector<size_t> my_to_other_mapping(m_nodes.size() + regex.m_nodes.size(), 0);
+
     size_t current_op = 0;
 
     RegexMergeState root_merge(regex.root(), m_cursors);
@@ -493,75 +548,93 @@ protected:
     // Keep going until every reachable node has been processed
     //
     while (current_op != merge_operation_queue.size()) {
-
       auto current_job = merge_operation_queue[current_op];
 
       m_cursors = current_job.cursors;
 
+
       MutableRegex::Node_T& node = current_job.base_node;
 
+      for (auto c : m_cursors) {
+        my_to_other_mapping[c] = regex.node_index(node);
+      }
       // if the node is a terminal, all of the currently existing cursors become
       // terminal nodes at the end of this function, the state machine cursors
       // are set to the regex terminals
-
-      if (node.terminal) {
-        for (auto c : m_cursors) {
-          terminal_regex_nodes.push_back(c);
-        }
-      }
-
       for (size_t idx = 0; idx < node.transitions.size(); idx++) {
+
+        // reset cursors after each iteration, so that all children have the same environment
+        m_cursors = current_job.cursors;
+
         char transition       = idx;
         size_t transitions_to = node.transitions[idx];
 
+        // skip null transitions
         if (transitions_to == 0) {
           continue;
         }
         queued_nodes.reserve(transitions_to + 1);
         bool has_already_queued_transition = queued_nodes[transitions_to];
 
-        // make sure the transition is not already queued
+        // std::cout << "writing transition: " << stringify_char(transition) << "\n";
+        // std::cout << "\t" << regex.node_index(node) << " -> " << transitions_to << "\n";
 
-        if (!has_already_queued_transition) {
+        // Handle looping cursors separately (if any)
+        // The cursor is looped if we can walk from its target
+        // back to the cursor
+        std::vector<size_t> looped_cursors;
+        std::vector<size_t> safe_cursors;
+        for (size_t i = 0; i < m_cursors.size(); i++) {
+          auto cursor = m_cursors[i];
 
-          // Handle looping cursors separately (if any)
-          // The cursor is looped if we can walk from its target
-          // back to the cursor
-          std::vector<size_t> looped_cursors;
-          std::vector<size_t> safe_cursors;
-          for (size_t i = 0; i < m_cursors.size(); i++) {
-            auto cursor = m_cursors[i];
+          bool is_looped = regex.path_is_cycle(transitions_to, regex.node_index(node), false);
+          // its only unsafe if the loop was not deliberate,
+          // i.e the transition already exists
 
-            bool is_looped = transitions_to < m_nodes.size() && path_is_cycle(transitions_to, cursor, false);
-            bool is_preexisting_transition = m_nodes[cursor].transitions[transition];
-            // its only unsafe if the loop was not deliberate,
-            // i.e the transition already exists
-
-            if (is_looped && is_preexisting_transition) {
-              looped_cursors.push_back(cursor);
-            } else {
-              safe_cursors.push_back(cursor);
-            }
+          if (is_looped) {
+            looped_cursors.push_back(cursor);
+          } else {
+            safe_cursors.push_back(cursor);
           }
-          //
-          m_cursors = safe_cursors;
+        }
+        //
+        m_cursors = safe_cursors;
 
-          cursor_transition(transition);
+        cursor_transition(transition);
 
-          for (auto cur : looped_cursors) {
+        // if the transitioned to node is a terminal, then push the new cursors to the terminal list
+        if (regex.m_nodes[transitions_to].terminal) {
+          for (auto c : m_cursors) {
+            terminal_regex_nodes.push_back(c);
+          }
+        }
 
-            // all we have to do is copy the cursor that we refer to, ahead of
-            // us these changes automatically propogate, and the end case is
-            // handled by the safe cursor case
+        for (auto cur : looped_cursors) {
 
+          // all we have to do is copy the cursor that we refer to, ahead of
+          // us these changes automatically propogate, and the end case is
+          // handled by the safe cursor case
+          bool is_hardresolve_loop = m_nodes[cur].transitions[transition];
+
+          if (is_hardresolve_loop) {
             auto& node                   = m_nodes[cur];
             auto& copy                   = new_node();
             copy                         = m_nodes[node.transitions[transition]];
             node.transitions[transition] = node_index(copy);
 
             m_cursors.push_back(node_index(copy));
+          } else {
+            // We can write the transition directly using the mapping table, without consequence
+            auto goes_to = my_to_other_mapping[transitions_to];
+            if (goes_to == 0) {
+              mutils::PANIC("Null referral for easy-resolveable loop");
+            }
+            m_nodes[cur].transitions[transition] = goes_to;
           }
+        }
 
+        // If the target node has not already been queued, then queue it
+        if (!has_already_queued_transition) {
           RegexMergeState job(regex.m_nodes[transitions_to], m_cursors);
 
           // add new transition to queue
@@ -573,7 +646,6 @@ protected:
     }
 
     m_cursors = terminal_regex_nodes;
-    std::cout << "----- DONE\n";
   }
 
   std::array<size_t, 128> get_cursor_common_transition() {
@@ -621,6 +693,9 @@ protected:
   //
   bool path_is_cycle(
       size_t start, size_t end, bool direct, std::vector<size_t> visited_nodes = {}, size_t chain_start = -1) {
+    if (start == end) {
+      return true;
+    }
     if (chain_start == -1) {
       chain_start = start;
     }
@@ -667,27 +742,55 @@ protected:
 
     bool has_removed_dup = false;
 
-    for (auto noderef = m_nodes.rbegin(); noderef < m_nodes.rend()-1; noderef++) {
-      if(noderef->is_null())continue;
+    for (auto noderef = m_nodes.rbegin(); noderef < m_nodes.rend() - 1; noderef++) {
+      if (noderef->is_null()) {
+        continue;
+      }
 
-      auto& node = *noderef;
-
+      auto& node    = *noderef;
+      auto node_idx = node_index(node);
       // check if another node with the exact same data exists
-      auto other_node = std::find(m_nodes.begin(), noderef.base()-1, node);
+      auto other_node = std::find_if(m_nodes.begin(), noderef.base() - 1, [&node, this, node_idx](Node_T & other) {
+        // We also consider nodes to be equal if transitions are self-referring
 
-      if(other_node != noderef.base()-1 && !other_node->is_null()){
+        
+        if (node.consume_char != other.consume_char) {
+          return false;
+        }
+        if constexpr(std::is_same_v<Value_T, void>){
+          if(node.terminal != other.terminal)return false;
+        }
+        else{
+          if(node.value != other.value)return false;
+        }
+        auto other_idx = node_index(other);
+
+        for (size_t i = 0; i < node.transitions.size(); i++) {
+          auto ntzn = node.transitions[i];
+          auto otzn = other.transitions[i];
+
+          bool are_both_self_referring = otzn == other_idx && ntzn == node_idx;
+          if (ntzn != otzn && !are_both_self_referring) {
+            return false;
+          }
+          // if(ntzn != otzn) return false;
+        }
+        return true;
+      });
+
+      if (other_node != noderef.base() - 1 && !other_node->is_null()) {
 
         auto new_idx = node_index(node);
         auto old_idx = node_index(*other_node);
 
-        for(auto n = m_nodes.begin(); n < noderef.base()-1; n++){
-          for(auto& tzn : n->transitions){
-            if( tzn == old_idx ){
+        for (auto& n : m_nodes) {
+          for (auto& tzn : n.transitions) {
+            if (tzn == old_idx) {
               tzn = new_idx;
             }
-          } 
+          }
         }
-      
+
         other_node->nullify();
         has_removed_dup = true;
       }
@@ -696,27 +799,30 @@ protected:
     return has_removed_dup;
   }
 
-  void remove_orphans() {
-    // Remove any nodes which have no direct parent
-  }
-
-  void remove_blanks(){
+  void remove_blanks() {
     // remove any nodes containing no data, and clear all references to them
+    // also removes orphaned nodes
     std::vector<Node_T> new_nodes;
     std::vector<size_t> mappings(m_nodes.size(), 0);
-
-    size_t idx = 0;
-    for(auto& node : m_nodes){
-      if(node.is_null()){
-        continue; 
+    std::vector<bool> loadable_nodes(m_nodes.size(), false);
+    loadable_nodes[0] = true;
+    size_t idx        = 0;
+    for (auto& node : m_nodes) {
+      if ((node.is_null() || !loadable_nodes[node_index(node)]) && node_index(node) != 0) {
+        continue;
       }
-        new_nodes.push_back(node);
+      new_nodes.push_back(node);
+
+      // write the loadable flags for each child node
+      for (auto idx : node.transitions) {
+        loadable_nodes[idx] = true;
+      }
       mappings[node_index(node)] = idx;
       idx++;
     }
 
-    for(auto& n : new_nodes){
-      for(auto&t : n.transitions){
+    for (auto& n : new_nodes) {
+      for (auto& t : n.transitions) {
         t = mappings[t];
       }
     }
@@ -726,4 +832,4 @@ protected:
 
 using MutableRegex = MutableStateMachine<void>;
 
-}; // namespace regex_table::build_time
+}; // namespace regex_table

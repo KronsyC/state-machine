@@ -1,10 +1,32 @@
+/// Copyright (c) 2023 Samir Bioud
+///
+/// Permission is hereby granted, free of charge, to any person obtaining a copy
+/// of this software and associated documentation files (the "Software"), to deal
+/// in the Software without restriction, including without limitation the rights
+/// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+/// copies of the Software, and to permit persons to whom the Software is
+/// furnished to do so, subject to the following conditions:
+///
+/// The above copyright notice and this permission notice shall be included in all
+/// copies or substantial portions of the Software.
+///
+/// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+/// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+/// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+/// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+/// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+/// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
+/// OR OTHER DEALINGS IN THE SOFTWARE.
+///
+
+
 #pragma once
 
 #include <array>
 #include <iostream>
 #include <optional>
 
-namespace regex_table::build_time {
+namespace regex_table{
 
 struct StateMachineNodeBase {
 
@@ -37,7 +59,7 @@ template <typename T> struct StateMachineNode : StateMachineNodeBase {
     return value.has_value();
   }
 
-  bool operator==(const StateMachineNode& other) const {
+  bool operator==(StateMachineNode const& other) const {
     return transitions == other.transitions && consume_char == other.consume_char && value == other.value;
   }
 
@@ -62,11 +84,13 @@ template <typename T> struct StateMachineNode : StateMachineNodeBase {
     return true;
   }
 
-  void print(){
+  void print() {
     std::cout << "transitions:\n";
     size_t idx = 0;
-    for(auto t: transitions){
-      if(t)std::cout << "'" << (char)idx << "' -> " << t << "\n";
+    for (auto t : transitions) {
+      if (t) {
+        std::cout << "'" << (char)idx << "' -> " << t << "\n";
+      }
       idx++;
     }
   }
@@ -86,6 +110,24 @@ template <> struct StateMachineNode<void> : StateMachineNodeBase {
 
   bool can_exit() const {
     return terminal;
+  }
+
+
+  bool is_null() const{
+    if(terminal) return false;
+    for(auto t : transitions){
+      if(t) return false;
+    }
+
+    return true;
+  }
+  void nullify() {
+    transitions.fill(0);
+    terminal = false;
+  }
+
+  bool operator==(StateMachineNode<void> const other )const{
+    return terminal == other.terminal && transitions == other.transitions;
   }
 };
 
