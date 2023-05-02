@@ -36,10 +36,17 @@
 
 namespace regex_table {
 
+enum Conflict {
+  Skip,
+  Overwrite,
+  Error
+};
+
 //
 // Build a mutable state machine
 //
 template <typename Value_T> struct MutableStateMachine {
+
 
   template <class U> friend struct MutableStateMachine;
 
@@ -49,6 +56,7 @@ template <typename Value_T> struct MutableStateMachine {
   using MutableRegex = MutableStateMachine<void>;
 
   std::vector<Node_T> m_nodes;
+  Conflict on_conflict = Conflict::Error;
 
   MutableStateMachine() {
     // root node insertion
@@ -59,6 +67,11 @@ template <typename Value_T> struct MutableStateMachine {
 
   Node_T& root() {
     return m_nodes[0];
+  }
+
+  Self& conflict(Conflict c) {
+    on_conflict = c;
+    return *this;
   }
 
   Self& match_optionally(MutableRegex pattern) {
@@ -161,10 +174,32 @@ template <typename Value_T> struct MutableStateMachine {
     requires((std::is_same_v<Value_T, Val_T> || std::is_convertible_v<Val_T, Value_T>) &&
              !std::is_same_v<Value_T, void>)
   {
-
     for (auto cur : m_cursors) {
       auto& node = m_nodes[cur];
+
+      if(node.value){
+        switch(on_conflict){
+          case Conflict::Skip: {
+            break;
+          }
+          case Conflict::Overwrite: {
+            node.value = value;
+            break;
+          }
+          case Conflict::Error: {
+
+            mutils::PANIC(
+              "Failed to commit a value to node #" +  std::to_string(cur) + " as the value: '" + mutils::stringify(node.value.value()) + "' already exists at this node\n" \
+              "\tIf this is intentional behavior, change the collision action using the collison() method"
+            );
+          }
+        }
+      }
+      else{
+
       node.value = value;
+      }
+
     }
 
     return *this;
@@ -348,6 +383,7 @@ template <typename Value_T> struct MutableStateMachine {
 
   void optimize() {
     remove_duplicates();
+    nullify_orphans();
     remove_blanks();
 
     // these passes invalidate cursors
@@ -570,21 +606,28 @@ protected:
     }
   }
 
-  void make_nonambiguous_link(size_t from, char transition_char, size_t to) {
+  //
+  // Makes an unambiguous transition
+  //
+  // returns any nodes that were created as a replacement to any of the 'watch_nodes'
+  //
+  std::vector<size_t> make_nonambiguous_link(size_t from, char transition_char, size_t to, std::vector<size_t> watch_nodes) {
 
     auto& tzn = m_nodes[from].transitions[transition_char];
 
     if (!tzn) {
       tzn = to;
-      return;
+      return {};
     }
 
     // Create a new node to replace the current transition
     // This node starts as an exact copy as the current transitioned node
     // we then begin merging in transitions from the target node as well
     // if any of these transitions collide, we run this function recursively
+    //
+    // exceptions:
+    // If both transitions are found to be self-referring, we can skip it
 
-    // std::cout << "Link " << from << " -> " << to << " via transition " << stringify_char(transition_char) << "\n";
 
     auto& node = new_node();
 
@@ -592,12 +635,67 @@ protected:
     node      = m_nodes[tzn];
 
     // fix self-references
-    for(auto& t : node.transitions){
-      if(t == tzn){
+    for (auto& t : node.transitions) {
+      if (t == tzn) {
         t = nidx;
       }
     }
 
+    std::vector<size_t> ret_nodes;
+
+    // act on the value contained within 'to'
+    Node_T& to_node = m_nodes[to];
+
+    if(std::find(watch_nodes.begin(), watch_nodes.end(), to) != watch_nodes.end()){
+      ret_nodes.push_back(nidx);
+    }
+    else if(std::find(watch_nodes.begin(), watch_nodes.end(), tzn) != watch_nodes.end()){
+      ret_nodes.push_back(nidx);
+    }
+
+
+
+    //
+    // Handle node value propogation
+    //
+
+    if constexpr (std::is_same_v<Value_T, void>) {
+      if (to_node.terminal) {
+        node.terminal = true;
+      }
+    } else {
+      // std::cout << "------------- \n\n"
+      //           << "at: #" << from << "\n"
+      //           << "trans_char: " << stringify_char(transition_char) << "\n"
+      //           << "current transition: #" << tzn << "\n"
+      //           << "new transition: #" << to
+      //           << "\n"
+      //           // << "transition: #" << transition << "\n"
+      //           // << "ch: " << stringify_char(ch) << "\n"
+      //           << "intermediary: #" << nidx << "\n"
+      //           << "old had value? " << node.value.has_value() << "\n";
+      if (to_node.value.has_value()) {
+        if (node.value.has_value()) {
+          switch (on_conflict) {
+            case Conflict::Error: {
+              mutils::PANIC("Conflicting values have been encountered while making nonambiguous transition: " +
+                            std::to_string(from) + " -> " + std::to_string(to) + " (via " +
+                            stringify_char(transition_char) + "\n");
+              break;
+            }
+            case Conflict::Skip: {
+              break;
+            }
+            case Conflict::Overwrite: {
+              node.value = to_node.value;
+              break;
+            }
+          }
+        } else {
+          node.value = to_node.value;
+        }
+      }
+    }
 
     // copy in the target node
     char ch = 0;
@@ -611,32 +709,29 @@ protected:
 
       bool is_self_referrer = transition == to;
 
-      if(is_self_referrer){
+      if (is_self_referrer) {
         // If the target is also a self-referrer, we can safely continue
         // otherwise, we panic as we have come to an unhandled case
-        if(node.transitions[ch] != nidx){
+        if (node.transitions[ch] != nidx) {
           mutils::PANIC("Unresolvable circular");
         }
+      } else {
+
+        auto res = make_nonambiguous_link(nidx, ch, transition, watch_nodes);
+
+        for(auto n : res){
+          ret_nodes.push_back(n);
+        }
       }
-      else {
 
-        make_nonambiguous_link(nidx, ch, transition);
-      }
-
-
-      // std::cout << "tzn: #" << tzn << "\n"
-      //           << "transition: #" << transition << "\n"
-      //           << "from: #" << from << "\n"
-      //           << "to: #" << to << "\n"
-      //           << "trans_char: " << stringify_char(transition_char) << "\n"
-      //           << "ch: " << stringify_char(ch) << "\n"
-      //           << "nidx: #" << nidx << "\n";
 
       ch++;
     }
 
     // set the transition
-    tzn = nidx;
+    m_nodes[from].transitions[transition_char] = nidx;
+
+    return ret_nodes;
   }
 
   void merge_regex_into_machine(MutableRegex regex) {
@@ -693,15 +788,19 @@ protected:
 
       char ch = 0;
       for (auto transition : new_root_transitions) {
-        auto& node = m_nodes[cur];
-        make_nonambiguous_link(cur, ch, transition);
+        if (transition) {
+          auto equivalent_terminals = make_nonambiguous_link(cur, ch, transition, terminals);
+
+          for(auto n : equivalent_terminals){
+            terminals.push_back(n);
+          }
+        }
 
         ch++;
       }
     }
 
     m_cursors = terminals;
-
   }
 
   std::array<size_t, 128> get_cursor_common_transition() {
@@ -858,12 +957,41 @@ protected:
     return has_removed_dup;
   }
 
+  void nullify_orphans() {
+    std::vector<bool> reachables(m_nodes.size(), false);
+    reachables[0] = true;
+
+    while (true) {
+      bool has_expanded = false;
+      for (Node_T& n : m_nodes) {
+        if (reachables[node_index(n)]) {
+          for (auto t : n.transitions) {
+            if (reachables[t]) {
+              continue;
+            }
+            reachables[t] = true;
+            has_expanded  = true;
+          }
+        }
+      }
+      if (!has_expanded) {
+        break;
+      }
+    }
+
+    for (auto& n : m_nodes) {
+      if (!reachables[node_index(n)]) {
+        n.nullify();
+      }
+    }
+  }
+
   void remove_blanks() {
     // remove any nodes containing no data, and clear all references to them
     // also removes orphaned nodes
     std::vector<Node_T> new_nodes;
     std::vector<size_t> mappings(m_nodes.size(), 0);
-    size_t idx        = 0;
+    size_t idx = 0;
     for (auto& node : m_nodes) {
       if ((node.is_null()) && node_index(node) != 0) {
         continue;
