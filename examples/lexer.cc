@@ -104,26 +104,26 @@ int main() {
   regex_table::MutableStateMachine<TokenVariant> machine;
 
   // clang-format off
-  // machine
-  //   .match_sequence("int").commit(TokenType::t_int)
-  //   .match_sequence("float").commit(TokenType::t_float)
-  //   .match_sequence("char").commit(TokenType::t_char)
-  //   .match_sequence("void").commit(TokenType::t_void)
-  //   .match_sequence("for").commit(TokenType::_for)
-  //   .match_sequence("while").commit(TokenType::_while)
-  //   .match_sequence("goto").commit(TokenType::_goto)
-  //   .match_sequence("break").commit(TokenType::_break)
-  //   .match_sequence("continue").commit(TokenType::_continue)
-  //   .match_sequence("+").commit(TokenType::plus)
-  //   .match_sequence("-").commit(TokenType::minus)
-  //   .match_sequence("*").commit(TokenType::star)
-  //   .match_sequence("/").commit(TokenType::slash)
-  //   .match_sequence("{").commit(TokenType::i_lbrace)
-  //   .match_sequence("}").commit(TokenType::i_rbrace)
-  //   .match_sequence("(").commit(TokenType::i_lparen)
-  //   .match_sequence(")").commit(TokenType::i_rparen)
-  //   .match_sequence("[").commit(TokenType::i_lbrack)
-  //   .match_sequence("]").commit(TokenType::i_rbrack);
+  machine
+    .match_sequence("int").commit(TokenType::t_int)
+    .match_sequence("float").commit(TokenType::t_float)
+    .match_sequence("char").commit(TokenType::t_char)
+    .match_sequence("void").commit(TokenType::t_void)
+    .match_sequence("for").commit(TokenType::_for)
+    .match_sequence("while").commit(TokenType::_while)
+    .match_sequence("goto").commit(TokenType::_goto)
+    .match_sequence("break").commit(TokenType::_break)
+    .match_sequence("continue").commit(TokenType::_continue)
+    .match_sequence("+").commit(TokenType::plus)
+    .match_sequence("-").commit(TokenType::minus)
+    .match_sequence("*").commit(TokenType::star)
+    .match_sequence("/").commit(TokenType::slash)
+    .match_sequence("{").commit(TokenType::i_lbrace)
+    .match_sequence("}").commit(TokenType::i_rbrace)
+    .match_sequence("(").commit(TokenType::i_lparen)
+    .match_sequence(")").commit(TokenType::i_rparen)
+    .match_sequence("[").commit(TokenType::i_lbrack)
+    .match_sequence("]").commit(TokenType::i_rbrack);
 
   // clang-format on
 
@@ -153,15 +153,14 @@ int main() {
     .match_many_optionally(digit)
     .terminal()
     .optimize();
-  // integer.print_dbg();
-  machine.match(integer).commit(TokenType::l_integer);
-  machine.match(floating).commit(TokenType::l_float);
 
-  // machine.optimize();
+  machine
+    .match(integer).commit(TokenType::l_integer)
+    .match(floating).commit(TokenType::l_float)
+    .optimize();
 
 
-  machine.print_dbg();
-  machine.optimize();
+
   machine.print_dbg();
   return 0;
 }

@@ -28,27 +28,23 @@
 
 namespace mutils {
 
-template <typename S, typename T> struct is_streamable {
-  template <typename SS, typename TT>
-  static auto test(int) -> decltype(std::declval<SS&>() << std::declval<TT>(), std::true_type());
-
-  template <typename, typename> static auto test(...) -> std::false_type;
-
-public:
-  static bool const value = decltype(test<S, T>(0))::value;
-};
-
 template <typename T>
 concept IsJavaStyleStringCastable = requires(std::string& tgt, T val) { tgt = val.toString(); };
 
 template<typename T>
 concept IsSTLToStringCompatible = requires(T val){ std::to_string(val); };
+
+template<typename T>
+concept IsStreamable = requires(T val, std::stringstream ss){ ss << val; };
+
+template<typename T>
+concept IsStringCastable = std::is_convertible_v<T, std::string>;
 //
 // Cast the 'val' to a string using the `operator std::string` function
 //
 template <typename T>
 std::string stringify(T val)
-  requires std::is_convertible_v<T, std::string>
+  requires IsStringCastable<T>
 {
   // Implicit/Explicit castability
   return std::string(val);
@@ -58,22 +54,10 @@ std::string stringify(T val)
 // Cast the 'val' to a string using the `std::to_string` function
 //
 
-// template<typename T>
-// std::string stringify(T val) requires IsSTLToStringCompatible<T>
-// {
-//   return std::to_string(val);
-// }
-
-//
-// Cast the 'val' to a string using the `operator<<(std::stringstream&)` function
-//
-template <typename T>
-std::string stringify(T val)
-  requires is_streamable<std::stringstream, T>::value
+template<typename T>
+std::string stringify(T val) requires IsSTLToStringCompatible<T> && (!IsStringCastable<T>)
 {
-  std::stringstream ss;
-  ss << val;
-  return ss.str();
+  return std::to_string(val);
 }
 
 //
@@ -82,10 +66,22 @@ std::string stringify(T val)
 
 template <typename T>
 std::string stringify(T val)
-  requires IsJavaStyleStringCastable<T>
+  requires IsJavaStyleStringCastable<T> && (!IsSTLToStringCompatible<T> && !IsStringCastable<T>)
 {
   // many people implement the toString function,
   // coming from java
   return val.toString();
 }
+//
+// Cast the 'val' to a string using the `operator<<(std::stringstream&)` function
+//
+template <typename T>
+std::string stringify(T val)
+  requires IsStreamable<T> && (!IsSTLToStringCompatible<T> && !IsStringCastable<T> && !IsJavaStyleStringCastable<T>)
+{
+  std::stringstream ss;
+  ss << val;
+  return ss.str();
+}
+
 }; // namespace mutils
