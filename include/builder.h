@@ -177,8 +177,8 @@ template <typename Value_T> struct MutableStateMachine {
     for (auto cur : m_cursors) {
       auto& node = m_nodes[cur];
 
-      if(node.value){
-        switch(on_conflict){
+      if (node.value) {
+        switch (on_conflict) {
           case Conflict::Skip: {
             break;
           }
@@ -188,18 +188,16 @@ template <typename Value_T> struct MutableStateMachine {
           }
           case Conflict::Error: {
 
-            mutils::PANIC(
-              "Failed to commit a value to node #" +  std::to_string(cur) + " as the value: '" + mutils::stringify(node.value.value()) + "' already exists at this node\n" \
-              "\tIf this is intentional behavior, change the collision action using the collison() method"
-            );
+            mutils::PANIC("Failed to commit a value to node #" + std::to_string(cur) + " as the value: '" +
+                          mutils::stringify(node.value.value()) +
+                          "' already exists at this node\n"
+                          "\tIf this is intentional behavior, change the collision action using the collison() method");
           }
         }
-      }
-      else{
+      } else {
 
-      node.value = value;
+        node.value = value;
       }
-
     }
 
     return *this;
@@ -345,6 +343,11 @@ template <typename Value_T> struct MutableStateMachine {
     return *this;
   }
 
+  //
+  // Dump a textual representation of the state machine
+  //
+  // (ugly a.f)
+  //
   void print_dbg() {
 
     size_t idx = 0;
@@ -381,6 +384,16 @@ template <typename Value_T> struct MutableStateMachine {
     }
   }
 
+  //
+  // Minimize the size of the data structure as much as possible
+  //
+  // WARNING: This should not be called on incomplete machines, as optimizations
+  //          assume no more extra data will be written
+  //
+  //          If you do write more transitions after optimization,
+  //          the transitions are likely to encounter all sorts of strange
+  //          behavior (u.b)
+  //
   void optimize() {
     remove_duplicates();
     nullify_orphans();
@@ -394,8 +407,9 @@ template <typename Value_T> struct MutableStateMachine {
   //
   // De-compactify the nodes of the tree
   //
+  // This is a crazy slow operation, so call with caution
+  //
   void expand() {
-    // optimize();
     std::vector<Node_T> new_nodes;
     m_expand(new_nodes);
     m_nodes   = new_nodes;
@@ -611,7 +625,8 @@ protected:
   //
   // returns any nodes that were created as a replacement to any of the 'watch_nodes'
   //
-  std::vector<size_t> make_nonambiguous_link(size_t from, char transition_char, size_t to, std::vector<size_t> watch_nodes) {
+  std::vector<size_t>
+      make_nonambiguous_link(size_t from, char transition_char, size_t to, std::vector<size_t> watch_nodes) {
 
     auto& tzn = m_nodes[from].transitions[transition_char];
 
@@ -646,13 +661,11 @@ protected:
     // act on the value contained within 'to'
     Node_T& to_node = m_nodes[to];
 
-    if(std::find(watch_nodes.begin(), watch_nodes.end(), to) != watch_nodes.end()){
+    if (std::find(watch_nodes.begin(), watch_nodes.end(), to) != watch_nodes.end()) {
+      ret_nodes.push_back(nidx);
+    } else if (std::find(watch_nodes.begin(), watch_nodes.end(), tzn) != watch_nodes.end()) {
       ret_nodes.push_back(nidx);
     }
-    else if(std::find(watch_nodes.begin(), watch_nodes.end(), tzn) != watch_nodes.end()){
-      ret_nodes.push_back(nidx);
-    }
-
 
 
     //
@@ -719,7 +732,7 @@ protected:
 
         auto res = make_nonambiguous_link(nidx, ch, transition, watch_nodes);
 
-        for(auto n : res){
+        for (auto n : res) {
           ret_nodes.push_back(n);
         }
       }
@@ -791,7 +804,7 @@ protected:
         if (transition) {
           auto equivalent_terminals = make_nonambiguous_link(cur, ch, transition, terminals);
 
-          for(auto n : equivalent_terminals){
+          for (auto n : equivalent_terminals) {
             terminals.push_back(n);
           }
         }
