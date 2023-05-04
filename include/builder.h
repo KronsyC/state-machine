@@ -628,6 +628,7 @@ protected:
   std::vector<size_t>
       make_nonambiguous_link(size_t from, char transition_char, size_t to, std::vector<size_t> watch_nodes) {
 
+    // The pre-existing transitioned node
     auto& tzn = m_nodes[from].transitions[transition_char];
 
     if (!tzn) {
@@ -656,37 +657,26 @@ protected:
       }
     }
 
-    std::vector<size_t> ret_nodes;
+    std::vector<size_t> tracked_nodes;
 
-    // act on the value contained within 'to'
-    Node_T& to_node = m_nodes[to];
 
+    // Update the tracked node list
     if (std::find(watch_nodes.begin(), watch_nodes.end(), to) != watch_nodes.end()) {
-      ret_nodes.push_back(nidx);
+      tracked_nodes.push_back(nidx);
     } else if (std::find(watch_nodes.begin(), watch_nodes.end(), tzn) != watch_nodes.end()) {
-      ret_nodes.push_back(nidx);
+      tracked_nodes.push_back(nidx);
     }
 
 
-    //
-    // Handle node value propogation
-    //
+    Node_T& to_node = m_nodes[to];
 
+
+    // Handle node value propogation
     if constexpr (std::is_same_v<Value_T, void>) {
       if (to_node.terminal) {
         node.terminal = true;
       }
     } else {
-      // std::cout << "------------- \n\n"
-      //           << "at: #" << from << "\n"
-      //           << "trans_char: " << stringify_char(transition_char) << "\n"
-      //           << "current transition: #" << tzn << "\n"
-      //           << "new transition: #" << to
-      //           << "\n"
-      //           // << "transition: #" << transition << "\n"
-      //           // << "ch: " << stringify_char(ch) << "\n"
-      //           << "intermediary: #" << nidx << "\n"
-      //           << "old had value? " << node.value.has_value() << "\n";
       if (to_node.value.has_value()) {
         if (node.value.has_value()) {
           switch (on_conflict) {
@@ -714,37 +704,54 @@ protected:
     char ch = 0;
     for (auto transition : m_nodes[to].transitions) {
 
+#define NEXT                                                                                                           \
+  ch++;                                                                                                                \
+  continue
+
+      // The base is circular and we are null,
+      // ensure the base maintains purity by changing it from
+      // a self-ref to an original-ref
+      if (node.transitions[ch] == nidx && transition == 0) {
+        node.transitions[ch] = tzn;
+        NEXT;
+      }
+
+      // We are circular and base is null
+      // we maintiain purity by writing our transition
+      if (transition == to && node.transitions[ch] == 0) {
+        node.transitions[ch] = tzn;
+        NEXT;
+      }
+
+      // We are both circular
+      // the node can just refer to itself
+      if (transition == to && node.transitions[ch] == nidx) {
+        // Already refers to self, so continue
+        NEXT;
+      }
+
       // skip null
       if (transition == 0) {
-        ch++;
-        continue;
-      }
-
-      bool is_self_referrer = transition == to;
-
-      if (is_self_referrer) {
-        // If the target is also a self-referrer, we can safely continue
-        // otherwise, we panic as we have come to an unhandled case
-        if (node.transitions[ch] != nidx) {
-          mutils::PANIC("Unresolvable circular");
-        }
-      } else {
-
-        auto res = make_nonambiguous_link(nidx, ch, transition, watch_nodes);
-
-        for (auto n : res) {
-          ret_nodes.push_back(n);
-        }
+        NEXT;
       }
 
 
-      ch++;
+      auto res = make_nonambiguous_link(nidx, ch, transition, watch_nodes);
+
+      for (auto n : res) {
+        tracked_nodes.push_back(n);
+      }
+
+
+      NEXT;
+
+#undef NEXT
     }
 
     // set the transition
     m_nodes[from].transitions[transition_char] = nidx;
 
-    return ret_nodes;
+    return tracked_nodes;
   }
 
   void merge_regex_into_machine(MutableRegex regex) {
