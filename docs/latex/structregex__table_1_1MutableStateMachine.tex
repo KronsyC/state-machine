@@ -1,0 +1,318 @@
+\hypertarget{structregex__table_1_1MutableStateMachine}{}\doxysection{regex\+\_\+table\+::Mutable\+State\+Machine\texorpdfstring{$<$}{<} Value\+\_\+T \texorpdfstring{$>$}{>} Struct Template Reference}
+\label{structregex__table_1_1MutableStateMachine}\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+
+
+A Simple class for building your own custom state machines.  
+
+
+
+
+{\ttfamily \#include $<$builder.\+h$>$}
+
+\doxysubsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_abc2eff10b6f743e697527c474a0be805}\label{structregex__table_1_1MutableStateMachine_abc2eff10b6f743e697527c474a0be805}} 
+using {\bfseries matchresult} = typename \+\_\+\+M\+\_\+\+Match\+Result\+\_\+T$<$ Value\+\_\+T $>$\+::type
+\item 
+\mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_a59257bd4ff0da43adb329b349acdacec}\label{structregex__table_1_1MutableStateMachine_a59257bd4ff0da43adb329b349acdacec}} 
+using {\bfseries lookup\+\_\+result} = \+\_\+\+M\+\_\+\+Lookup\+Result$<$ Value\+\_\+T $>$
+\item 
+\mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_a4f53fff089b7a7c83c3b686fd3aef673}\label{structregex__table_1_1MutableStateMachine_a4f53fff089b7a7c83c3b686fd3aef673}} 
+using {\bfseries source\+\_\+range} = \+\_\+\+M\+\_\+source\+\_\+range\+\_\+t$<$ Value\+\_\+T $>$
+\end{DoxyCompactItemize}
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{structregex__table_1_1StateMachineNode}{Node\+\_\+T}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_a5f551fda33576e7e3f25c95c04f71436}{root}} ()
+\item 
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_a1a599392b118655741570ff8ac86c873}{conflict}} (Conflict c)
+\item 
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_ae2830845835cd9ca18b90df21b1abfd6}{match\+\_\+optionally}} (\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Mutable\+Regex}} pattern)
+\item 
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_a5fac0369598eaf36f08b133b502ff9e6}{match}} (\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Mutable\+Regex}} pattern)
+\item 
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_a63cabe3eeae7239b2eb1fd81036b2c8f}{match\+\_\+many}} (\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Mutable\+Regex}} pattern)
+\item 
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_a900a295b4fe0d9467c551513a7bf16ee}{match\+\_\+many\+\_\+optionally}} (\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Mutable\+Regex}} pattern)
+\item 
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_a6e5f427ddd1bcf38942cbe5639a559d5}{match\+\_\+default}} ()
+\item 
+{\footnotesize template$<$typename Val\+\_\+T $>$ \newline
+requires ((std\+::is\+\_\+same\+\_\+v$<$Value\+\_\+T, Val\+\_\+T$>$ $\vert$$\vert$ std\+::is\+\_\+convertible\+\_\+v$<$Val\+\_\+T, Value\+\_\+T$>$) \&\& !std\+::is\+\_\+same\+\_\+v$<$Value\+\_\+T, void$>$)}\\\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_adc1582af9c00e56e288b2eb5c30fed25}{commit}} (Val\+\_\+T value)
+\item 
+{\footnotesize template$<$typename Val\+\_\+T $>$ \newline
+requires ((std\+::is\+\_\+same\+\_\+v$<$Value\+\_\+T, Val\+\_\+T$>$ $\vert$$\vert$ std\+::is\+\_\+convertible\+\_\+v$<$Val\+\_\+T, Value\+\_\+T$>$) \&\& !std\+::is\+\_\+same\+\_\+v$<$Value\+\_\+T, void$>$)}\\\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_a0c4f72091bccc95946c2051865c1c226}{commit\+\_\+continue}} (Val\+\_\+T value)
+\item 
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_ac7eb080083c60e5fa1b6a52ed26d9ee8}{match\+\_\+sequence}} (std\+::string seq)
+\item 
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_a03cbd035b96d3d26e36e8adeff0b6385}{match\+\_\+any}} ()
+\item 
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_a8c818dada323ddac2eaf941106449459}{match\+\_\+any\+\_\+of}} (char const $\ast$choices)
+\item 
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_a05ade46207d9eabf1540cc7020cae20b}{match\+\_\+digit}} ()
+\item 
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_a77889bef952aa8e85f469f7ca01f2d4b}{match\+\_\+alpha}} ()
+\item 
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_a43f5e4001f233f9cde6b47d351510e2e}{match\+\_\+lowercase}} ()
+\item 
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_a996f5e02dd6c21e7447d884a03e656f7}{match\+\_\+uppercase}} ()
+\item 
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_a9febfbef9e613d96ac48128fa5a6867b}{match\+\_\+whitespace}} ()
+\item 
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_a81b33224f9d4519d636953feed400955}{match\+\_\+control}} ()
+\item 
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_aa8e5dc2d8f44760152771c561d0c30ac}{terminal}} ()
+\item 
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_abfd8464c51fcfc1bde9bcc9671332960}{goback}} ()
+\item 
+void \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_aa4d7db339aad20c990887da52c2c293e}{print\+\_\+dbg}} ()
+\item 
+void \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_a6fc93be3fecea0e3208ac611115af190}{optimize}} ()
+\item 
+void \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_a337c62e724568f36af4f415e5ad408a4}{expand}} ()
+\item 
+matchresult \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_a8b93c31f4fdd76cf17b1939e98aa1a3c}{matches}} (char const $\ast$s)
+\item 
+lookup\+\_\+result \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_ad8016a8503ccdbf8a59dfc6f0818af66}{lookup}} (char const $\ast$s)
+\item 
+source\+\_\+range \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_ad494674c1a8b64516b0b182b86dda8fc}{find\+\_\+first}} (char const $\ast$s)
+\item 
+std\+::vector$<$ source\+\_\+range $>$ \mbox{\hyperlink{structregex__table_1_1MutableStateMachine_af390d92a1c1cfedb1606283cf69df225}{find\+\_\+many}} (char const $\ast$s)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\subsubsection*{template$<$typename Value\+\_\+T$>$\newline
+struct regex\+\_\+table\+::\+Mutable\+State\+Machine$<$ Value\+\_\+\+T $>$}
+A Simple class for building your own custom state machines. 
+
+it exposes a simple builder pattern to construct these state machines
+
+the Mutable\+State\+Machine$<$void$>$ specialization represents a raw Regular Expression state machine, whereas any other specializations represent State machines with contained values 
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_adc1582af9c00e56e288b2eb5c30fed25}\label{structregex__table_1_1MutableStateMachine_adc1582af9c00e56e288b2eb5c30fed25}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!commit@{commit}}
+\index{commit@{commit}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{commit()}{commit()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+template$<$typename Val\+\_\+T $>$ \newline
+requires ((std\+::is\+\_\+same\+\_\+v$<$Value\+\_\+T, Val\+\_\+T$>$ $\vert$$\vert$ std\+::is\+\_\+convertible\+\_\+v$<$Val\+\_\+T, Value\+\_\+T$>$) \&\& !std\+::is\+\_\+same\+\_\+v$<$Value\+\_\+T, void$>$)\\
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::commit (\begin{DoxyParamCaption}\item[{Val\+\_\+T}]{value }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Write the given value at the current table position then return back to the root \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_a0c4f72091bccc95946c2051865c1c226}\label{structregex__table_1_1MutableStateMachine_a0c4f72091bccc95946c2051865c1c226}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!commit\_continue@{commit\_continue}}
+\index{commit\_continue@{commit\_continue}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{commit\_continue()}{commit\_continue()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+template$<$typename Val\+\_\+T $>$ \newline
+requires ((std\+::is\+\_\+same\+\_\+v$<$Value\+\_\+T, Val\+\_\+T$>$ $\vert$$\vert$ std\+::is\+\_\+convertible\+\_\+v$<$Val\+\_\+T, Value\+\_\+T$>$) \&\& !std\+::is\+\_\+same\+\_\+v$<$Value\+\_\+T, void$>$)\\
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::commit\+\_\+continue (\begin{DoxyParamCaption}\item[{Val\+\_\+T}]{value }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Write the given value at the current table position, and continue \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_a1a599392b118655741570ff8ac86c873}\label{structregex__table_1_1MutableStateMachine_a1a599392b118655741570ff8ac86c873}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!conflict@{conflict}}
+\index{conflict@{conflict}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{conflict()}{conflict()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::conflict (\begin{DoxyParamCaption}\item[{Conflict}]{c }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Set the behavior of the state machine when conflicting node values are written \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_a337c62e724568f36af4f415e5ad408a4}\label{structregex__table_1_1MutableStateMachine_a337c62e724568f36af4f415e5ad408a4}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!expand@{expand}}
+\index{expand@{expand}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{expand()}{expand()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+void \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::expand (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+De-\/compactify the nodes of the tree
+
+This is a crazy slow operation, so call with caution \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_ad494674c1a8b64516b0b182b86dda8fc}\label{structregex__table_1_1MutableStateMachine_ad494674c1a8b64516b0b182b86dda8fc}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!find\_first@{find\_first}}
+\index{find\_first@{find\_first}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{find\_first()}{find\_first()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+source\+\_\+range \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::find\+\_\+first (\begin{DoxyParamCaption}\item[{char const $\ast$}]{s }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Find the first sequence of characters that matches the expression matches are greedy
+
+returns the range of characters matched, and a corresponding stored value (if applicable) start and end will be null if no match has occurred
+
+NOTE\+: This function can be quite slow ( O(n$^\wedge$2) ), so please consider alternative methods before using this \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_af390d92a1c1cfedb1606283cf69df225}\label{structregex__table_1_1MutableStateMachine_af390d92a1c1cfedb1606283cf69df225}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!find\_many@{find\_many}}
+\index{find\_many@{find\_many}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{find\_many()}{find\_many()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+std\+::vector$<$ source\+\_\+range $>$ \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::find\+\_\+many (\begin{DoxyParamCaption}\item[{char const $\ast$}]{s }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Find each sequence of characters that matches the expression matches are greedy
+
+returns the each range of characters matched, and the corresponding stored values (if applicable)
+
+NOTE\+: This function can be quite slow, so please consider alternative methods before using this \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_abfd8464c51fcfc1bde9bcc9671332960}\label{structregex__table_1_1MutableStateMachine_abfd8464c51fcfc1bde9bcc9671332960}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!goback@{goback}}
+\index{goback@{goback}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{goback()}{goback()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::goback (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Reset the cursors back to the root node \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_ad8016a8503ccdbf8a59dfc6f0818af66}\label{structregex__table_1_1MutableStateMachine_ad8016a8503ccdbf8a59dfc6f0818af66}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!lookup@{lookup}}
+\index{lookup@{lookup}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{lookup()}{lookup()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+lookup\+\_\+result \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::lookup (\begin{DoxyParamCaption}\item[{char const $\ast$}]{s }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Attempt to match the beginning of the string with the expression as far as possible
+
+end will be nullptr if the match fails \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_a5fac0369598eaf36f08b133b502ff9e6}\label{structregex__table_1_1MutableStateMachine_a5fac0369598eaf36f08b133b502ff9e6}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!match@{match}}
+\index{match@{match}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{match()}{match()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::match (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Mutable\+Regex}}}]{pattern }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Match the provided regular expression pattern
+
+this is used for modularly building a state machine \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_a77889bef952aa8e85f469f7ca01f2d4b}\label{structregex__table_1_1MutableStateMachine_a77889bef952aa8e85f469f7ca01f2d4b}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!match\_alpha@{match\_alpha}}
+\index{match\_alpha@{match\_alpha}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{match\_alpha()}{match\_alpha()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::match\+\_\+alpha (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Match any alphabetical character (a-\/z, A-\/Z) \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_a03cbd035b96d3d26e36e8adeff0b6385}\label{structregex__table_1_1MutableStateMachine_a03cbd035b96d3d26e36e8adeff0b6385}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!match\_any@{match\_any}}
+\index{match\_any@{match\_any}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{match\_any()}{match\_any()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::match\+\_\+any (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Match any character (including whitespace and control chars) \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_a8c818dada323ddac2eaf941106449459}\label{structregex__table_1_1MutableStateMachine_a8c818dada323ddac2eaf941106449459}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!match\_any\_of@{match\_any\_of}}
+\index{match\_any\_of@{match\_any\_of}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{match\_any\_of()}{match\_any\_of()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::match\+\_\+any\+\_\+of (\begin{DoxyParamCaption}\item[{char const $\ast$}]{choices }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Match any of the characters provided in the \textquotesingle{}choices\textquotesingle{} string \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_a81b33224f9d4519d636953feed400955}\label{structregex__table_1_1MutableStateMachine_a81b33224f9d4519d636953feed400955}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!match\_control@{match\_control}}
+\index{match\_control@{match\_control}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{match\_control()}{match\_control()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::match\+\_\+control (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Matches any control characters control characters are those outside of ascii range \mbox{[} 33 -\/ 127 \mbox{]}, which are not whitespace \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_a6e5f427ddd1bcf38942cbe5639a559d5}\label{structregex__table_1_1MutableStateMachine_a6e5f427ddd1bcf38942cbe5639a559d5}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!match\_default@{match\_default}}
+\index{match\_default@{match\_default}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{match\_default()}{match\_default()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::match\+\_\+default (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Create a new state-\/machine branch for the default cases
+
+this should be done last, as to prevent ambiguity \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_a05ade46207d9eabf1540cc7020cae20b}\label{structregex__table_1_1MutableStateMachine_a05ade46207d9eabf1540cc7020cae20b}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!match\_digit@{match\_digit}}
+\index{match\_digit@{match\_digit}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{match\_digit()}{match\_digit()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::match\+\_\+digit (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Match any digit (0-\/9) \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_a43f5e4001f233f9cde6b47d351510e2e}\label{structregex__table_1_1MutableStateMachine_a43f5e4001f233f9cde6b47d351510e2e}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!match\_lowercase@{match\_lowercase}}
+\index{match\_lowercase@{match\_lowercase}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{match\_lowercase()}{match\_lowercase()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::match\+\_\+lowercase (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Match any lowercase alphabetical character (a-\/z) \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_a63cabe3eeae7239b2eb1fd81036b2c8f}\label{structregex__table_1_1MutableStateMachine_a63cabe3eeae7239b2eb1fd81036b2c8f}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!match\_many@{match\_many}}
+\index{match\_many@{match\_many}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{match\_many()}{match\_many()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::match\+\_\+many (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Mutable\+Regex}}}]{pattern }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Match the given regular expression 1 or more times
+
+equivalent to the \textquotesingle{}+\textquotesingle{} regex operator \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_a900a295b4fe0d9467c551513a7bf16ee}\label{structregex__table_1_1MutableStateMachine_a900a295b4fe0d9467c551513a7bf16ee}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!match\_many\_optionally@{match\_many\_optionally}}
+\index{match\_many\_optionally@{match\_many\_optionally}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{match\_many\_optionally()}{match\_many\_optionally()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::match\+\_\+many\+\_\+optionally (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Mutable\+Regex}}}]{pattern }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Match the given regular expression 0 or more times
+
+equivalent to the \textquotesingle{}$\ast$\textquotesingle{} regex operator \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_ae2830845835cd9ca18b90df21b1abfd6}\label{structregex__table_1_1MutableStateMachine_ae2830845835cd9ca18b90df21b1abfd6}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!match\_optionally@{match\_optionally}}
+\index{match\_optionally@{match\_optionally}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{match\_optionally()}{match\_optionally()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::match\+\_\+optionally (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Mutable\+Regex}}}]{pattern }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Optionally match the provided regular expression pattern
+
+roughly equivalent to the \textquotesingle{}?\textquotesingle{} operator in regex \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_ac7eb080083c60e5fa1b6a52ed26d9ee8}\label{structregex__table_1_1MutableStateMachine_ac7eb080083c60e5fa1b6a52ed26d9ee8}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!match\_sequence@{match\_sequence}}
+\index{match\_sequence@{match\_sequence}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{match\_sequence()}{match\_sequence()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::match\+\_\+sequence (\begin{DoxyParamCaption}\item[{std\+::string}]{seq }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Match a sequence of characters exactly \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_a996f5e02dd6c21e7447d884a03e656f7}\label{structregex__table_1_1MutableStateMachine_a996f5e02dd6c21e7447d884a03e656f7}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!match\_uppercase@{match\_uppercase}}
+\index{match\_uppercase@{match\_uppercase}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{match\_uppercase()}{match\_uppercase()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::match\+\_\+uppercase (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Match any uppercase alphabetical characters (A-\/Z) \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_a9febfbef9e613d96ac48128fa5a6867b}\label{structregex__table_1_1MutableStateMachine_a9febfbef9e613d96ac48128fa5a6867b}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!match\_whitespace@{match\_whitespace}}
+\index{match\_whitespace@{match\_whitespace}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{match\_whitespace()}{match\_whitespace()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::match\+\_\+whitespace (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Matches visual whitespace characters defined at \href{https://en.wikipedia.org/wiki/Whitespace_character}{\texttt{ https\+://en.\+wikipedia.\+org/wiki/\+Whitespace\+\_\+character}} \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_a8b93c31f4fdd76cf17b1939e98aa1a3c}\label{structregex__table_1_1MutableStateMachine_a8b93c31f4fdd76cf17b1939e98aa1a3c}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!matches@{matches}}
+\index{matches@{matches}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{matches()}{matches()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+matchresult \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::matches (\begin{DoxyParamCaption}\item[{char const $\ast$}]{s }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Test if the state machine successfully matches the entire string \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_a6fc93be3fecea0e3208ac611115af190}\label{structregex__table_1_1MutableStateMachine_a6fc93be3fecea0e3208ac611115af190}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!optimize@{optimize}}
+\index{optimize@{optimize}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{optimize()}{optimize()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+void \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::optimize (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Minimize the size of the data structure as much as possible
+
+WARNING\+: This should not be called on incomplete machines, as optimizations assume no more extra data will be written
+
+If you do write more transitions after optimization, the transitions are likely to encounter all sorts of strange behavior (u.\+b) \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_aa4d7db339aad20c990887da52c2c293e}\label{structregex__table_1_1MutableStateMachine_aa4d7db339aad20c990887da52c2c293e}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!print\_dbg@{print\_dbg}}
+\index{print\_dbg@{print\_dbg}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{print\_dbg()}{print\_dbg()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+void \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::print\+\_\+dbg (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Dump a textual representation of the state machine to stdout \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_a5f551fda33576e7e3f25c95c04f71436}\label{structregex__table_1_1MutableStateMachine_a5f551fda33576e7e3f25c95c04f71436}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!root@{root}}
+\index{root@{root}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{root()}{root()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+\mbox{\hyperlink{structregex__table_1_1StateMachineNode}{Node\+\_\+T}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::root (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Get the root node of the state machine \mbox{\Hypertarget{structregex__table_1_1MutableStateMachine_aa8e5dc2d8f44760152771c561d0c30ac}\label{structregex__table_1_1MutableStateMachine_aa8e5dc2d8f44760152771c561d0c30ac}} 
+\index{regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}!terminal@{terminal}}
+\index{terminal@{terminal}!regex\_table::MutableStateMachine$<$ Value\_T $>$@{regex\_table::MutableStateMachine$<$ Value\_T $>$}}
+\doxysubsubsection{\texorpdfstring{terminal()}{terminal()}}
+{\footnotesize\ttfamily template$<$typename Value\+\_\+T $>$ \\
+\mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{Self}} \& \mbox{\hyperlink{structregex__table_1_1MutableStateMachine}{regex\+\_\+table\+::\+Mutable\+State\+Machine}}$<$ Value\+\_\+T $>$\+::terminal (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Sets the current cursor position to a terminal state (only works for simple state machines) 
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+include/builder.\+h\end{DoxyCompactItemize}

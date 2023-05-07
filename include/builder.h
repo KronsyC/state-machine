@@ -35,20 +35,20 @@
 #include <vector>
 
 namespace regex_table {
-template <typename T>
-concept StringLike = requires(T a, size_t n) {
-                       { a[n] } -> std::convertible_to<const char&>;
-                     };
-
 enum Conflict {
   Skip,
   Overwrite,
   Error
 };
 
-//
-// Build a mutable state machine
-//
+/**
+ * \brief A Simple class for building your own custom state machines
+ *
+ * it exposes a simple builder pattern to construct these state machines
+ *
+ * the MutableStateMachine<void> specialization represents a raw Regular Expression state machine,
+ * whereas any other specializations represent State machines with contained values
+ */
 template <typename Value_T> struct MutableStateMachine {
 
 
@@ -81,34 +81,43 @@ private:
     char const* end;
   };
 
-  public :
-      template <class U>
-      friend struct MutableStateMachine;
-
   using Node_T = StateMachineNode<Value_T>;
-  using Self   = MutableStateMachine;
-
-  using MutableRegex = MutableStateMachine<void>;
 
   std::vector<Node_T> m_nodes;
   Conflict on_conflict = Conflict::Error;
 
+  std::vector<size_t> m_cursors = {0};
+  using Self                    = MutableStateMachine;
+  using MutableRegex            = MutableStateMachine<void>;
+
+public:
   MutableStateMachine() {
     // root node insertion
     m_nodes.push_back(Node_T());
   }
 
-  std::vector<size_t> m_cursors = {0};
-
+  /**
+   * Get the root node of the state machine
+   */
   Node_T& root() {
     return m_nodes[0];
   }
 
+  /**
+   * Set the behavior of the state machine when
+   * conflicting node values are written
+   *
+   */
   Self& conflict(Conflict c) {
     on_conflict = c;
     return *this;
   }
 
+  /**
+   * Optionally match the provided regular expression pattern
+   *
+   * roughly equivalent to the '?' operator in regex
+   */
   Self& match_optionally(MutableRegex pattern) {
     // Merge the regex into the current machine,
     // then append all the current cursors to the new
@@ -125,14 +134,21 @@ private:
     return *this;
   }
 
+  /**
+   * Match the provided regular expression pattern
+   *
+   * this is used for modularly building a state machine
+   */
   Self& match(MutableRegex pattern) {
     merge_regex_into_machine(pattern);
     return *this;
   }
 
-  //
-  // Match the given subexpression 1 or more times
-  //
+  /**
+   * Match the given regular expression 1 or more times
+   *
+   * equivalent to the '+' regex operator
+   */
   Self& match_many(MutableRegex pattern) {
     // Simply match the pattern, then match_many_optionally
 
@@ -142,9 +158,11 @@ private:
     return *this;
   }
 
-  //
-  // Match the given subexpression 0 or more times
-  //
+  /**
+   * Match the given regular expression 0 or more times
+   *
+   * equivalent to the '*' regex operator
+   */
   Self& match_many_optionally(MutableRegex pattern) {
 
     auto cursors_before = m_cursors;
@@ -164,11 +182,11 @@ private:
     return *this;
   }
 
-  //
-  // Create a new state-machine branch for the default cases
-  //
-  // this should be done last, as to prevent ambiguity
-  //
+  /**
+   * Create a new state-machine branch for the default cases
+   *
+   * this should be done last, as to prevent ambiguity
+   */
   Self& match_default() {
     // Create a single node for all default cases to point to
     auto& default_node    = new_node();
@@ -183,10 +201,10 @@ private:
     return *this;
   }
 
-  //
-  // Write the given value at the current table position
-  // then return back to the root
-  //
+  /**
+   * Write the given value at the current table position
+   * then return back to the root
+   */
   template <typename Val_T>
   Self& commit(Val_T value)
     requires((std::is_same_v<Value_T, Val_T> || std::is_convertible_v<Val_T, Value_T>) &&
@@ -200,10 +218,10 @@ private:
     return *this;
   }
 
-  //
-  // Write the given value at the current table position,
-  // and continue
-  //
+  /**
+   * Write the given value at the current table position,
+   * and continue
+   */
   template <typename Val_T>
   Self& commit_continue(Val_T value)
     requires((std::is_same_v<Value_T, Val_T> || std::is_convertible_v<Val_T, Value_T>) &&
@@ -238,9 +256,9 @@ private:
     return *this;
   }
 
-  //
-  // Match a sequence of characters exactly
-  //
+  /**
+   * Match a sequence of characters exactly
+   */
   Self& match_sequence(std::string seq) {
 
     for (char part : seq) {
@@ -250,9 +268,9 @@ private:
     return *this;
   }
 
-  //
-  // Match any character (including whitespace and control chars)
-  //
+  /**
+   * Match any character (including whitespace and control chars)
+   */
   Self& match_any() {
     std::vector<size_t> new_cursors;
     auto initial_cursors = m_cursors;
@@ -270,9 +288,9 @@ private:
     return *this;
   }
 
-  //
-  // Match any of the characters provided in the 'choices' string
-  //
+  /**
+   * Match any of the characters provided in the 'choices' string
+   */
   Self& match_any_of(char const* choices) {
     std::vector<size_t> new_cursors;
     auto initial_cursors = m_cursors;
@@ -290,43 +308,46 @@ private:
     return *this;
   }
 
-  //
-  // Match any digit (0-9)
-  //
+  /**
+   * Match any digit (0-9)
+   */
   Self& match_digit() {
     return match_any_of("0123456789");
   }
 
-  //
-  // Match any alphabetical character (a-z, A-Z)
-  //
+  /**
+   * Match any alphabetical character (a-z, A-Z)
+   */
   Self& match_alpha() {
     return match_any_of("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM");
   }
 
-  //
-  // Match any lowercase alphabetical character (a-z)
-  //
+  /**
+   * Match any lowercase alphabetical character (a-z)
+   */
   Self& match_lowercase() {
     return match_any_of("qwertyuiopasdfghjklzxcvbnm");
   }
 
+  /**
+   * Match any uppercase alphabetical characters (A-Z)
+   */
   Self& match_uppercase() {
     return match_any_of("QWERTYUIOPASDFGHJKLZXCVBNM");
   }
 
-  //
-  // Matches visual whitespace characters
-  // defined at https://en.wikipedia.org/wiki/Whitespace_character
-  //
+  /**
+   * Matches visual whitespace characters
+   * defined at https://en.wikipedia.org/wiki/Whitespace_character
+   */
   Self& match_whitespace() {
     return match_any_of("\011\012\013\014\015\040");
   }
 
-  //
-  // Matches any control characters
-  // control characters are those outside of ascii range [ 33 - 127 ], which are not whitespace
-  //
+  /**
+   * Matches any control characters
+   * control characters are those outside of ascii range [ 33 - 127 ], which are not whitespace
+   */
   Self& match_control() {
     return match_any_of(
         "\001"
@@ -360,9 +381,10 @@ private:
         "\177");
   }
 
-  //
-  // Sets the current cursor position to a terminal state
-  //
+  /**
+   * Sets the current cursor position to a terminal state
+   * (only works for simple state machines)
+   */
   Self& terminal()
     requires std::is_same_v<Value_T, void>
   {
@@ -370,19 +392,18 @@ private:
     return *this;
   }
 
-  //
-  // Reset the cursors back to the root node
-  //
+  /**
+   * Reset the cursors back to the root node
+   */
   Self& goback() {
     m_cursors = {0};
     return *this;
   }
 
-  //
-  // Dump a textual representation of the state machine
-  //
-  // (ugly a.f)
-  //
+  /**
+   * Dump a textual representation of the state machine to
+   * stdout
+   */
   void print_dbg() {
 
     size_t idx = 0;
@@ -419,16 +440,16 @@ private:
     }
   }
 
-  //
-  // Minimize the size of the data structure as much as possible
-  //
-  // WARNING: This should not be called on incomplete machines, as optimizations
-  //          assume no more extra data will be written
-  //
-  //          If you do write more transitions after optimization,
-  //          the transitions are likely to encounter all sorts of strange
-  //          behavior (u.b)
-  //
+  /**
+   * Minimize the size of the data structure as much as possible
+   *
+   * WARNING: This should not be called on incomplete machines, as optimizations
+   *          assume no more extra data will be written
+   *
+   *          If you do write more transitions after optimization,
+   *          the transitions are likely to encounter all sorts of strange
+   *          behavior (u.b)
+   */
   void optimize() {
     remove_duplicates();
     nullify_orphans();
@@ -439,11 +460,11 @@ private:
     m_cursors = {0};
   }
 
-  //
-  // De-compactify the nodes of the tree
-  //
-  // This is a crazy slow operation, so call with caution
-  //
+  /**
+   * De-compactify the nodes of the tree
+   *
+   * This is a crazy slow operation, so call with caution
+   */
   void expand() {
     std::vector<Node_T> new_nodes;
     m_expand(new_nodes);
@@ -458,10 +479,10 @@ private:
 
   using matchresult = typename _M_MatchResult_T<Value_T>::type;
 
-  //
-  // Test if the state machine successfully matches
-  // the entire string
-  //
+  /**
+   * Test if the state machine successfully matches
+   * the entire string
+   */
   matchresult matches(char const* s) {
     size_t node = 0;
     for (auto c = &s[0]; *c != 0; c++) {
@@ -492,40 +513,40 @@ private:
 
   using lookup_result = _M_LookupResult<Value_T>;
 
-  //
-  // Attempt to match the beginning of the string with
-  // the expression as far as possible
-  //
-  // end will be nullptr if the match fails
-  //
-  lookup_result lookup(const char* s){
-    const char* c = s;
-    size_t n = 0;
+  /**
+   * Attempt to match the beginning of the string with
+   * the expression as far as possible
+   *
+   * end will be nullptr if the match fails
+   */
+  lookup_result lookup(char const* s) {
+    char const* c = s;
+    size_t n      = 0;
 
-    const char* last_val = nullptr;
+    char const* last_val    = nullptr;
     Node_T* last_value_node = nullptr;
 
-    while(*c != 0){
+    while (*c != 0) {
       auto idx = m_nodes[n].transitions[*c];
 
-      if(idx == 0){
+      if (idx == 0) {
         break;
       }
       Node_T& next = m_nodes[idx];
 
-      if(next.can_exit()){
-        last_val = c;
+      if (next.can_exit()) {
+        last_val        = c;
         last_value_node = &next;
       }
       c++;
       n = idx;
     }
 
-    if(last_val){
+    if (last_val) {
       lookup_result lr;
       lr.end = last_val;
 
-      if constexpr(!std::is_same_v<void, Value_T>){
+      if constexpr (!std::is_same_v<void, Value_T>) {
         lr.value = &last_value_node->value.value();
       }
       return lr;
@@ -537,15 +558,15 @@ private:
 
   using source_range = _M_source_range_t<Value_T>;
 
-  //
-  // Find the first sequence of characters that matches the expression
-  // matches are greedy
-  //
-  // returns the range of characters matched, and a corresponding stored value (if applicable)
-  // start and end will be null if no match has occurred
-  //
-  // NOTE: This function can be quite slow ( O(n^2) ), so please consider alternative methods before using this
-  //
+  /**
+   * Find the first sequence of characters that matches the expression
+   * matches are greedy
+   *
+   * returns the range of characters matched, and a corresponding stored value (if applicable)
+   * start and end will be null if no match has occurred
+   *
+   * NOTE: This function can be quite slow ( O(n^2) ), so please consider alternative methods before using this
+   */
   source_range find_first(char const* s) {
     //
     // We consider a match to have occurred if the substring
@@ -600,6 +621,15 @@ private:
     return r;
   }
 
+  /**
+   * Find each sequence of characters that matches the expression
+   * matches are greedy
+   *
+   * returns the each range of characters matched, and the corresponding stored values (if applicable)
+   *
+   * NOTE: This function can be quite slow, so please consider alternative methods before using this
+   */
+
   std::vector<source_range> find_many(char const* s) {
     std::vector<source_range> return_value;
 
@@ -620,7 +650,7 @@ private:
     return return_value;
   }
 
-protected:
+private:
   size_t m_expand(std::vector<Node_T>& storage, size_t node = 0, std::map<size_t, size_t> branch_mappings = {}) {
     // For this function, we walk the function and construct a new node for each node encountered
     // without taking duplicate encoutners into account
