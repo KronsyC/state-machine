@@ -8,11 +8,13 @@ assignees: ''
 ---
 
 **Give a high-level overview of the feature you are suggesting**
+A short and snappy sentence about the feature you would like
 
 **How should the developers go about fixing this issue?**
+What do you think the best way of implementing this feature would be?
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
+**Why do you want this feature?**
+There may be a simpler alternative to solve your issue.
 
 **Additional context**
 Add any other context or screenshots about the feature request here.
