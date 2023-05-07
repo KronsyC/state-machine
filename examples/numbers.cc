@@ -20,7 +20,7 @@
 ///
 
 
-#include "../include/builder.h"
+#include "../include/regex-backend/builder.h"
 using namespace regex_table;
 
 void print_range(const char* begin, const char* end){

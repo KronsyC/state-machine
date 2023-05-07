@@ -1,0 +1,4 @@
+[wrap-git]
+url = https://github.com/KronsyC/mutils.git
+depth = 1
+revision = head
