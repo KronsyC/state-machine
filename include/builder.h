@@ -35,6 +35,10 @@
 #include <vector>
 
 namespace regex_table {
+template <typename T>
+concept StringLike = requires(T a, size_t n) {
+                       { a[n] } -> std::convertible_to<const char&>;
+                     };
 
 enum Conflict {
   Skip,
@@ -48,7 +52,38 @@ enum Conflict {
 template <typename Value_T> struct MutableStateMachine {
 
 
-  template <class U> friend struct MutableStateMachine;
+private:
+  template <typename T> struct _M_source_range_t {
+    char const* begin;
+    char const* end;
+    Value_T* value;
+  };
+
+  template <> struct _M_source_range_t<void> {
+    char const* begin;
+    char const* end;
+  };
+
+  template <typename T> struct _M_MatchResult_T {
+    using type = Value_T*;
+  };
+
+  template <> struct _M_MatchResult_T<void> {
+    using type = bool;
+  };
+
+  template <typename T> struct _M_LookupResult {
+    char const* end;
+    Value_T* value;
+  };
+
+  template <> struct _M_LookupResult<void> {
+    char const* end;
+  };
+
+  public :
+      template <class U>
+      friend struct MutableStateMachine;
 
   using Node_T = StateMachineNode<Value_T>;
   using Self   = MutableStateMachine;
@@ -414,6 +449,175 @@ template <typename Value_T> struct MutableStateMachine {
     m_expand(new_nodes);
     m_nodes   = new_nodes;
     m_cursors = {0};
+  }
+
+  //
+  // Lookup-oriented functions
+  // performance matters
+  //
+
+  using matchresult = typename _M_MatchResult_T<Value_T>::type;
+
+  //
+  // Test if the state machine successfully matches
+  // the entire string
+  //
+  matchresult matches(char const* s) {
+    size_t node = 0;
+    for (auto c = &s[0]; *c != 0; c++) {
+      auto tzn = m_nodes[node].transitions[*c];
+
+      if (tzn == 0) {
+        if constexpr (std::is_same_v<void, Value_T>) {
+          return false;
+        } else {
+          return nullptr;
+        }
+      }
+      node = tzn;
+    }
+
+    // if we ended on a terminal, all is good
+
+    if constexpr (std::is_same_v<void, Value_T>) {
+      return m_nodes[node].can_exit();
+    } else {
+      if (m_nodes[node].value.has_value()) {
+        return &m_nodes[node].value.value();
+      } else {
+        return nullptr;
+      }
+    }
+  }
+
+  using lookup_result = _M_LookupResult<Value_T>;
+
+  //
+  // Attempt to match the beginning of the string with
+  // the expression as far as possible
+  //
+  // end will be nullptr if the match fails
+  //
+  lookup_result lookup(const char* s){
+    const char* c = s;
+    size_t n = 0;
+
+    const char* last_val = nullptr;
+    Node_T* last_value_node = nullptr;
+
+    while(*c != 0){
+      auto idx = m_nodes[n].transitions[*c];
+
+      if(idx == 0){
+        break;
+      }
+      Node_T& next = m_nodes[idx];
+
+      if(next.can_exit()){
+        last_val = c;
+        last_value_node = &next;
+      }
+      c++;
+      n = idx;
+    }
+
+    if(last_val){
+      lookup_result lr;
+      lr.end = last_val;
+
+      if constexpr(!std::is_same_v<void, Value_T>){
+        lr.value = &last_value_node->value.value();
+      }
+      return lr;
+    }
+    lookup_result lr;
+    lr.end = nullptr;
+    return lr;
+  }
+
+  using source_range = _M_source_range_t<Value_T>;
+
+  //
+  // Find the first sequence of characters that matches the expression
+  // matches are greedy
+  //
+  // returns the range of characters matched, and a corresponding stored value (if applicable)
+  // start and end will be null if no match has occurred
+  //
+  // NOTE: This function can be quite slow ( O(n^2) ), so please consider alternative methods before using this
+  //
+  source_range find_first(char const* s) {
+    //
+    // We consider a match to have occurred if the substring
+    // causes a traversal through a value-node at any point
+    //
+    // We continue after finding a value node, as this function
+    // is 'greedy'
+    //
+    // Iterate over each substring until we find one which
+
+    char const* ss = s;
+
+    while (*ss != 0) {
+      size_t node                = 0;
+      Node_T* last_value_node    = nullptr;
+      char const* last_value_ptr = nullptr;
+      for (auto c = ss; *c != 0; c++) {
+        auto next = m_nodes[node].transitions[*c];
+
+        if (next == 0) {
+          // end of chain
+          break;
+        }
+
+        auto& n = m_nodes[next];
+
+        if (n.can_exit()) {
+          last_value_node = &n;
+          last_value_ptr  = c;
+        }
+        node = next;
+      }
+
+      if (last_value_node) {
+        // We have found a value node
+        // this node is the deepest one encountered on the first match
+        source_range range;
+
+        range.begin = ss;
+        range.end   = last_value_ptr;
+        if constexpr (!std::is_same_v<Value_T, void>) {
+          range.value = &last_value_node->value.value();
+        }
+        return range;
+      }
+
+      ss++;
+    }
+    source_range r;
+    r.begin = nullptr;
+    r.end   = nullptr;
+    return r;
+  }
+
+  std::vector<source_range> find_many(char const* s) {
+    std::vector<source_range> return_value;
+
+    char const* cur = s;
+
+    while (*cur != 0) {
+      // std::cout << "CUR: " << cur << "\n";
+      auto result = find_first(cur);
+      if (result.begin == nullptr) {
+        // we are done, no more instances
+        break;
+      }
+      return_value.push_back(result);
+      // Update the cursor to be equal to end + 1
+      cur = result.end;
+    }
+
+    return return_value;
   }
 
 protected:
