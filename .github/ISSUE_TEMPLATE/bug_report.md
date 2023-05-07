@@ -23,16 +23,10 @@ A clear and concise description of what you expected to happen.
 **Screenshots**
 If applicable, add screenshots to help explain your problem.
 
-**Desktop (please complete the following information):**
- - OS: [e.g. iOS]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
-
-**Smartphone (please complete the following information):**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - Browser [e.g. stock browser, safari]
- - Version [e.g. 22]
+**Compiler Info (please complete the following information):**
+- Name: [e.g clang]
+- Version: [e.g 15.0.7]
+- Target Triple: [e.g x86_64-pc-linux-gnu]
 
 **Additional context**
 Add any other context about the problem here.
