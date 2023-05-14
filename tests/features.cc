@@ -22,7 +22,7 @@
 #include "regex-backend/builder.h"
 #include <gtest/gtest.h>
 
-using namespace regex_table;
+using namespace regex_backend;
 
 TEST(features, equivalence) {
   MutableRegex regex1;
@@ -98,6 +98,24 @@ TEST(features, match_optional) {
   ASSERT_FALSE(regex.matches("ABCDEFfoo")) << "Does not match with a partial optional";
   ASSERT_FALSE(regex.matches("ABCD")) << "Does not match with a substring";
 }
+
+TEST(features, match_many_optional) {
+  MutableRegex regex;
+
+  regex.match_sequence("abc").terminal();
+
+  MutableRegex test;
+  test.match_sequence("alphabet.").match_many_optionally(regex).match_sequence(".done").terminal();
+
+
+  ASSERT_TRUE(test.matches("alphabet.abc.done")) << "Matches once";
+  ASSERT_TRUE(test.matches("alphabet.abcabc.done")) << "Matches twice";
+  ASSERT_TRUE(test.matches("alphabet..done")) << "Matches none";
+
+  ASSERT_FALSE(test.matches("alphabet.alphabet.done")) << "Does not match non-conforming string\n";
+}
+
+
 
 int main() {
   testing::InitGoogleTest();

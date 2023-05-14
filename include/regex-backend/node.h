@@ -26,11 +26,13 @@
 #include <iostream>
 #include <optional>
 
-namespace regex_table{
+namespace regex_backend {
 
 struct StateMachineNodeBase {
 
-  std::array<std::size_t, 128> transitions;
+  // 0 -> 127 = Character transitions
+  // 128 = EOF
+  std::array<std::size_t, 129> transitions{};
 
   //
   // Some nodes may not want to consume characters
@@ -83,17 +85,6 @@ template <typename T> struct StateMachineNode : StateMachineNodeBase {
     }
     return true;
   }
-
-  void print() {
-    std::cout << "transitions:\n";
-    size_t idx = 0;
-    for (auto t : transitions) {
-      if (t) {
-        std::cout << "'" << (char)idx << "' -> " << t << "\n";
-      }
-      idx++;
-    }
-  }
 };
 
 //
@@ -112,25 +103,29 @@ template <> struct StateMachineNode<void> : StateMachineNodeBase {
     return terminal;
   }
 
-
-  bool is_null() const{
-    if(terminal) return false;
-    for(auto t : transitions){
-      if(t) return false;
+  bool is_null() const {
+    if (terminal) {
+      return false;
+    }
+    for (auto t : transitions) {
+      if (t) {
+        return false;
+      }
     }
 
     return true;
   }
+
   void nullify() {
     transitions.fill(0);
     terminal = false;
   }
 
-  bool operator==(StateMachineNode<void> const other )const{
+  bool operator==(StateMachineNode<void> const other) const {
     return terminal == other.terminal && transitions == other.transitions;
   }
 };
 
 using RegexNode = StateMachineNode<void>;
 
-}; // namespace regex_table::build_time
+}; // namespace regex_backend

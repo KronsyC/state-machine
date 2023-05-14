@@ -22,6 +22,7 @@
 #pragma once
 
 #include "./node.h"
+#include "mutils/assert.h"
 #include "mutils/panic.h"
 #include "mutils/stringify.h"
 #include <algorithm>
@@ -29,12 +30,14 @@
 #include <functional>
 #include <iostream>
 #include <map>
+#include <span>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <vector>
 
-namespace regex_table {
+namespace regex_backend {
 enum Conflict {
   Skip,
   Overwrite,
@@ -83,26 +86,35 @@ private:
 
   using Node_T = StateMachineNode<Value_T>;
 
-  std::vector<Node_T> m_nodes;
+  std::vector<Node_T> _m_nodes;
   Conflict on_conflict = Conflict::Error;
 
-  std::vector<size_t> m_cursors = {0};
+  std::vector<size_t> m_cursors = {1};
   using Self                    = MutableStateMachine;
   using MutableRegex            = MutableStateMachine<void>;
+
+  Node_T& get_node(size_t number) {
+    MUTILS_ASSERT(number != 0, "Attempt to load a null transition");
+    MUTILS_ASSERT(number <= _m_nodes.size(), "Attempt to access an out-of-range node");
+    return _m_nodes[number - 1];
+  }
 
 public:
   MutableStateMachine() {
     // root node insertion
-    m_nodes.push_back(Node_T());
+    _m_nodes.push_back(Node_T());
   }
 
+  bool operator==(MutableStateMachine const& other) const {
 
-  bool operator==(const MutableStateMachine& other) const{
+    if (_m_nodes.size() != other._m_nodes.size()) {
+      return false;
+    }
 
-    if(m_nodes.size() != other.m_nodes.size())return false;
-
-    for(size_t i = 0; i < m_nodes.size(); i++){
-      if(m_nodes[i] != other.m_nodes[i])return false;
+    for (size_t i = 0; i < _m_nodes.size(); i++) {
+      if (_m_nodes[i] != other._m_nodes[i]) {
+        return false;
+      }
     }
     return true;
   }
@@ -111,7 +123,7 @@ public:
    * Get the root node of the state machine
    */
   Node_T& root() {
-    return m_nodes[0];
+    return _m_nodes[0];
   }
 
   /**
@@ -135,6 +147,7 @@ public:
     // cursor list
 
     auto cursors_before = m_cursors;
+
 
     merge_regex_into_machine(pattern);
 
@@ -160,13 +173,10 @@ public:
    *
    * equivalent to the '+' regex operator
    */
-  Self& match_many(MutableRegex pattern) {
+  Self& match_many(MutableRegex& pattern) {
     // Simply match the pattern, then match_many_optionally
-
-    merge_regex_into_machine(pattern);
-    match_many_optionally(pattern);
-
-    return *this;
+    return match(pattern).match_many_optionally(pattern);
+    // return *this;
   }
 
   /**
@@ -181,12 +191,54 @@ public:
     // Merge the regex
     merge_regex_into_machine(pattern);
 
-    // Copy the transitions of the first node of the pattern to the last node
-    cursors_merge(cursors_before);
+    auto regex_terminals = m_cursors;
+    // Allow the end point to cycle back into the start.
+    // we do this by copying the pure transitions of the root pattern node
+    // to each of the cursors
+    //
+    // 1. Copy pattern into machine (excl. root)
+    // 2. make nonambiguous transitions into the new part of machine for each current cursor
+    //    (for each transition of the original pattern root)
+    //    we do not use the new machine segment created by the regex cloning as that segment
+    //    may be "corrupted" by currently existing transitions
 
-    // allow insertion from the old cursors as well
+    auto res           = copy_in_regex_except_root(pattern);
+    auto& pattern_root = pattern.root();
+    //
+    // // Transform the newly written regex into a cycle
+    for(auto c : res.terminals){
+      int transition = 0;
+      for(auto tzn : pattern_root.transitions){
+        if(!tzn){
+          transition++;
+          continue;
+        }
+        make_nonambiguous_link(c, transition, res.mappings[tzn], {});
+        transition++;
+      }
+    }
 
+
+    m_cursors = regex_terminals;
+    for (auto c : m_cursors) {
+      int transition = 0;
+      for (auto tzn : pattern_root.transitions) {
+        if(!tzn){
+          transition++;
+          continue;
+        }
+        // std::cout << "Make transition " << c << " -> " << res.mappings[tzn] << " via " << stringify_char(transition) << "\n";
+        make_nonambiguous_link(c, transition, res.mappings[tzn], {});
+        transition++;
+      }
+    }
+    //
+    // // finally, we preserve the original cursors
+    m_cursors = regex_terminals;
     for (auto c : cursors_before) {
+      m_cursors.push_back(c);
+    }
+    for(auto c : res.terminals){
       m_cursors.push_back(c);
     }
 
@@ -203,12 +255,13 @@ public:
     auto& default_node    = new_node();
     auto default_node_idx = node_index(default_node);
     for (auto c : m_cursors) {
-      for (auto& t : m_nodes[c].transitions) {
+      for (auto& t : get_node(c).transitions) {
         if (t == 0) {
-          t = default_node;
+          t = default_node_idx;
         }
       }
     }
+    m_cursors = {default_node_idx};
     return *this;
   }
 
@@ -224,7 +277,7 @@ public:
 
     commit_continue(value);
 
-    m_cursors = {0};
+    m_cursors = {1};
 
     return *this;
   }
@@ -239,7 +292,7 @@ public:
              !std::is_same_v<Value_T, void>)
   {
     for (auto cur : m_cursors) {
-      auto& node = m_nodes[cur];
+      auto& node = get_node(cur);
 
       if (node.value) {
         switch (on_conflict) {
@@ -285,9 +338,9 @@ public:
   Self& match_any() {
     std::vector<size_t> new_cursors;
     auto initial_cursors = m_cursors;
-    for (int i = 0; i <= 127; i++) {
+    for (int i = 0; i <= 128; i++) {
       // transition, and update cursors
-      cursor_transition((char)i);
+      cursor_transition(i);
 
       for (auto c : m_cursors) {
         new_cursors.push_back(c);
@@ -324,6 +377,18 @@ public:
    */
   Self& match_digit() {
     return match_any_of("0123456789");
+  }
+
+  /**
+   * Match an eof
+   *
+   * in the context of a stream, eof is the stream end
+   * in strings, eof is the null terminator
+   */
+  Self& match_eof() {
+    cursor_transition(128);
+
+    return *this;
   }
 
   /**
@@ -407,7 +472,7 @@ public:
    * Reset the cursors back to the root node
    */
   Self& goback() {
-    m_cursors = {0};
+    m_cursors = {1};
     return *this;
   }
 
@@ -416,11 +481,11 @@ public:
    * stdout
    */
   void print_dbg() {
-
     size_t idx = 0;
 
+
     std::string in = " |  ";
-    for (Node_T& node : m_nodes) {
+    for (Node_T& node : _m_nodes) {
       bool is_terminal = node.can_exit();
       bool is_cursor   = std::find(m_cursors.begin(), m_cursors.end(), node_index(node)) != m_cursors.end();
 
@@ -433,10 +498,10 @@ public:
         }
       }
 
-      std::cout << "#" << idx << " " << (is_terminal ? terminal_msg : "") << " " << (is_cursor ? "[cursor] " : "")
+      std::cout << "#" << idx + 1 << " " << (is_terminal ? terminal_msg : "") << " " << (is_cursor ? "[cursor] " : "")
                 << ">>\n";
 
-      char transition = 0;
+      int transition = 0;
 
       for (auto t : node.transitions) {
         if (t != 0) {
@@ -468,7 +533,7 @@ public:
 
     // these passes invalidate cursors
     // thus, we do the safest thing and reset them
-    m_cursors = {0};
+    m_cursors = {1};
   }
 
   /**
@@ -479,8 +544,8 @@ public:
   void expand() {
     std::vector<Node_T> new_nodes;
     m_expand(new_nodes);
-    m_nodes   = new_nodes;
-    m_cursors = {0};
+    _m_nodes  = new_nodes;
+    m_cursors = {1};
   }
 
   //
@@ -494,28 +559,44 @@ public:
    * Test if the state machine successfully matches
    * the entire string
    */
-  matchresult matches(char const* s) {
-    size_t node = 0;
-    for (auto c = &s[0]; *c != 0; c++) {
-      auto tzn = m_nodes[node].transitions[*c];
+  template <bool FILEMODE = false> matchresult matches(const std::string_view s) {
+    size_t node = 1;
 
-      if (tzn == 0) {
-        if constexpr (std::is_same_v<void, Value_T>) {
-          return false;
-        } else {
-          return nullptr;
+    if constexpr (FILEMODE) {
+      for (size_t i = 0; i <= s.size(); i++) {
+        int c    = i == s.size() ? 128 : s[i];
+        auto tzn = get_node(node).transitions[c];
+        if (tzn == 0) {
+          if constexpr (std::is_same_v<void, Value_T>) {
+            return false;
+          } else {
+            return nullptr;
+          }
         }
+        node = tzn;
       }
-      node = tzn;
-    }
+    } else {
 
+      for (size_t i = 0; i < s.size(); i++) {
+        int c    = s[i];
+        auto tzn = get_node(node).transitions[c];
+        if (tzn == 0) {
+          if constexpr (std::is_same_v<void, Value_T>) {
+            return false;
+          } else {
+            return nullptr;
+          }
+        }
+        node = tzn;
+      }
+    }
     // if we ended on a terminal, all is good
 
     if constexpr (std::is_same_v<void, Value_T>) {
-      return m_nodes[node].can_exit();
+      return get_node(node).can_exit();
     } else {
-      if (m_nodes[node].value.has_value()) {
-        return &m_nodes[node].value.value();
+      if (get_node(node).value.has_value()) {
+        return &get_node(node).value.value();
       } else {
         return nullptr;
       }
@@ -532,18 +613,18 @@ public:
    */
   lookup_result lookup(char const* s) {
     char const* c = s;
-    size_t n      = 0;
+    size_t n      = 1;
 
     char const* last_val    = nullptr;
     Node_T* last_value_node = nullptr;
 
     while (*c != 0) {
-      auto idx = m_nodes[n].transitions[*c];
+      auto idx = get_node(n).transitions[*c];
 
       if (idx == 0) {
         break;
       }
-      Node_T& next = m_nodes[idx];
+      Node_T& next = get_node(idx);
 
       if (next.can_exit()) {
         last_val        = c;
@@ -591,18 +672,18 @@ public:
     char const* ss = s;
 
     while (*ss != 0) {
-      size_t node                = 0;
+      size_t node                = 1;
       Node_T* last_value_node    = nullptr;
       char const* last_value_ptr = nullptr;
       for (auto c = ss; *c != 0; c++) {
-        auto next = m_nodes[node].transitions[*c];
+        auto next = get_node(node).transitions[*c];
 
         if (next == 0) {
           // end of chain
           break;
         }
 
-        auto& n = m_nodes[next];
+        auto& n = get_node(next);
 
         if (n.can_exit()) {
           last_value_node = &n;
@@ -676,10 +757,10 @@ private:
     storage.push_back(Node_T());
 
     branch_mappings[node] = root_idx;
-    storage[root_idx]     = m_nodes[node];
+    storage[root_idx]     = get_node(node);
     storage[root_idx].transitions.fill(0);
-    char c = 0;
-    for (auto t : m_nodes[node].transitions) {
+    int c = 0;
+    for (auto t : get_node(node).transitions) {
 
       if (t == 0) {
         c++;
@@ -717,7 +798,7 @@ private:
     requires std::is_same_v<Value_T, void>
   {
     for_each_cursor([this](size_t idx) {
-      m_nodes[m_cursors[idx]].terminal = true;
+      get_node(m_cursors[idx]).terminal = true;
     });
   }
 
@@ -728,13 +809,14 @@ private:
   //
   // NOTE: This function is not loop-aware
   //
-  void cursor_transition(char child) {
+  void cursor_transition(int child) {
 
     std::vector<size_t> cursors_without_specified_child;
     std::vector<size_t> cursors_with_specified_child;
 
+    // Asess the actions required on each cursor
     for (size_t i = 0; i < m_cursors.size(); i++) {
-      auto& node = m_nodes[m_cursors[i]];
+      auto& node = get_node(m_cursors[i]);
 
       if (node.transitions[child] == 0) {
         cursors_without_specified_child.push_back(i);
@@ -753,14 +835,14 @@ private:
       // all cursors without the child can safely point to the same node
       // there are no pre-existing nodes to worry about
       for (auto cur : cursors_without_specified_child) {
-        m_nodes[m_cursors[cur]].transitions[child] = goes_to_idx;
+        get_node(m_cursors[cur]).transitions[child] = goes_to_idx;
       }
     }
 
     // the remaining cursors are overwritten with the index of the already
     // existing child node
     for (auto cur : cursors_with_specified_child) {
-      auto new_idx = m_nodes[m_cursors[cur]].transitions[child];
+      auto new_idx = get_node(m_cursors[cur]).transitions[child];
 
       new_cursors.push_back(new_idx);
     }
@@ -817,7 +899,7 @@ private:
     std::vector<size_t> sliding_window_transitions;
 
     for (auto c : m_cursors) {
-      auto& node = m_nodes[c];
+      auto& node = get_node(c);
       if (node.transitions[transition_on] == 0) {
         // safely transition
         node.transitions[transition_on] = transition_target;
@@ -830,8 +912,8 @@ private:
     for (auto cursor : sliding_window_transitions) {
 
       // all we do is copy the contents of the next node to the pointed node
-      auto& node      = m_nodes[cursor];
-      auto& next_node = m_nodes[node.transitions[transition_on]];
+      auto& node      = get_node(cursor);
+      auto& next_node = get_node(node.transitions[transition_on]);
     }
 
     if (sliding_window_transitions.size()) {
@@ -841,8 +923,9 @@ private:
 
   Node_T& new_node() {
     auto n = Node_T();
-    m_nodes.push_back(n);
-    return m_nodes[m_nodes.size() - 1];
+    n.transitions.fill(0);
+    _m_nodes.push_back(n);
+    return _m_nodes[_m_nodes.size() - 1];
   }
 
   std::size_t node_index(Node_T& node) {
@@ -850,12 +933,16 @@ private:
     auto const base_addr = &root();
     auto const diff      = addr - base_addr;
 
-    return diff;
+    return diff + 1;
   }
 
-  std::string stringify_char(char c) {
+  std::string stringify_char(int c) {
+    if (c == -128 || c == 128) {
+      return "<EOF>";
+    }
     if (c <= 31 || c == 127) {
       return "\\" + std::to_string((int)c);
+
     } else {
       std::string ret;
       ret += "'";
@@ -868,16 +955,19 @@ private:
   //
   // Makes an unambiguous transition
   //
+  // this function will never modify the 'to' node, but instead make clones whenever necessary
+  //
   // returns any nodes that were created as a replacement to any of the 'watch_nodes'
   //
   std::vector<size_t>
-      make_nonambiguous_link(size_t from, char transition_char, size_t to, std::vector<size_t> watch_nodes) {
+      make_nonambiguous_link(size_t from, int transition_char, size_t to, std::vector<size_t> watch_nodes) {
 
+    MUTILS_ASSERT(to != 0, "Tried to link to a null node");
+    MUTILS_ASSERT(from != 0, "Tried to link from a null node");
     // The pre-existing transitioned node
-    auto& tzn = m_nodes[from].transitions[transition_char];
-
+    auto tzn = get_node(from).transitions[transition_char];
     if (!tzn) {
-      tzn = to;
+      get_node(from).transitions[transition_char] = to;
       return {};
     }
 
@@ -891,12 +981,11 @@ private:
 
 
     auto& node = new_node();
-
     auto nidx = node_index(node);
-    node      = m_nodes[tzn];
+    node      = get_node(tzn);
 
     // fix self-references
-    for (auto& t : node.transitions) {
+    for (auto t : node.transitions) {
       if (t == tzn) {
         t = nidx;
       }
@@ -913,7 +1002,7 @@ private:
     }
 
 
-    Node_T& to_node = m_nodes[to];
+    Node_T& to_node = get_node(to);
 
 
     // Handle node value propogation
@@ -946,13 +1035,12 @@ private:
     }
 
     // copy in the target node
-    char ch = 0;
-    for (auto transition : m_nodes[to].transitions) {
+    int ch = 0;
+    for (auto transition : get_node(to).transitions) {
 
 #define NEXT                                                                                                           \
   ch++;                                                                                                                \
   continue
-
       // The base is circular and we are null,
       // ensure the base maintains purity by changing it from
       // a self-ref to an original-ref
@@ -994,25 +1082,23 @@ private:
     }
 
     // set the transition
-    m_nodes[from].transitions[transition_char] = nidx;
+    get_node(from).transitions[transition_char] = nidx;
 
     return tracked_nodes;
   }
 
-  void merge_regex_into_machine(MutableRegex regex) {
+  struct CopyResult {
+    std::map<size_t, size_t> mappings;
+    std::vector<size_t> terminals;
+  };
 
-    //
-    // PROCEDURE:
-    //
-    // 1. Copy all nodes from the regex into this machine (excluding the root)
-    // 2. Clone the root to each cursor, then de-ambiguify
-    //
-
+  CopyResult copy_in_regex_except_root(MutableRegex regex) {
+    std::map<size_t, size_t> mappings;
 
     std::vector<size_t> terminals;
 
-    const size_t base_index = m_nodes.size() - 1;
-    for (auto node = regex.m_nodes.begin() + 1; node < regex.m_nodes.end(); node++) {
+    const size_t base_index = _m_nodes.size() - 1;
+    for (auto node = regex._m_nodes.begin() + 1; node < regex._m_nodes.end(); node++) {
       auto idx = regex.node_index(*node);
 
       if (node->terminal) {
@@ -1032,13 +1118,40 @@ private:
 
       n.consume_char = node->consume_char;
 
-      m_nodes.push_back(n);
+      _m_nodes.push_back(n);
+      mappings[idx] = _m_nodes.size();
     }
 
-    std::array<size_t, 128> new_root_transitions;
+    CopyResult r;
+    r.mappings  = mappings;
+    r.terminals = terminals;
+    return r;
+  }
+
+  //
+  // Merge a regex into the current state machine, while applying cursor transitions
+  //
+  // returns a mapping of regex indexes -> created indexes
+  //
+  void merge_regex_into_machine(MutableRegex regex) {
+
+    //
+    // PROCEDURE:
+    //
+    // 1. Copy all nodes from the regex into this machine (excluding the root)
+    // 2. Clone the root to each cursor, then de-ambiguify
+    //
 
 
-    char c = 0;
+    const size_t base_index = _m_nodes.size() - 1;
+    auto result             = copy_in_regex_except_root(regex);
+    auto terminals = result.terminals;
+
+    std::array<size_t, 129> new_root_transitions;
+
+    // Generate a list of the transitions that need
+    // to be added to the cursors
+    int c = 0;
     for (auto transition : regex.root().transitions) {
       if (transition != 0) {
         transition += base_index;
@@ -1051,7 +1164,7 @@ private:
 
     for (auto cur : m_cursors) {
 
-      char ch = 0;
+      int ch = 0;
       for (auto transition : new_root_transitions) {
         if (transition) {
           auto equivalent_terminals = make_nonambiguous_link(cur, ch, transition, terminals);
@@ -1068,16 +1181,16 @@ private:
     m_cursors = terminals;
   }
 
-  std::array<size_t, 128> get_cursor_common_transition() {
-    std::array<size_t, 128> transitions = m_nodes[m_cursors[0]].transitions;
+  std::array<size_t, 129> get_cursor_common_transition() {
+    std::array<size_t, 129> transitions = get_node(m_cursors[0]).transitions;
 
     for (size_t idx = 1; idx < m_cursors.size(); idx++) {
       auto c    = m_cursors[idx];
-      auto tzns = m_nodes[c].transitions;
+      auto tzns = get_node(c).transitions;
 
       // iterate over all transitions, remove ones
       // not common to main array
-      for (size_t i = 0; i < 128; i++) {
+      for (size_t i = 0; i < 129; i++) {
         if (tzns[i] != transitions[i]) {
           transitions[i] = 0;
         }
@@ -1087,15 +1200,15 @@ private:
     return transitions;
   }
 
-  void cursor_overwrite_transition(char transition, size_t new_tgt) {
+  void cursor_overwrite_transition(int transition, size_t new_tgt) {
     for (auto c : m_cursors) {
-      m_nodes[c].transitions[transition] = new_tgt;
+      get_node(c).transitions[transition] = new_tgt;
     }
   }
 
-  bool cursor_transition_is_free(char transition) {
+  bool cursor_transition_is_free(int transition) {
     for (auto c : m_cursors) {
-      if (m_nodes[c].transitions[transition]) {
+      if (get_node(c).transitions[transition]) {
         return false;
       }
     }
@@ -1121,7 +1234,7 @@ private:
     }
 
     if (direct && chain_start == start) {
-      for (auto tzn : m_nodes[end].transitions) {
+      for (auto tzn : get_node(end).transitions) {
         if (tzn != chain_start && path_is_cycle(tzn, chain_start, false)) {
           return false;
         }
@@ -1130,7 +1243,7 @@ private:
 
     visited_nodes.push_back(start);
 
-    for (auto transition : m_nodes[start].transitions) {
+    for (auto transition : get_node(start).transitions) {
 
       // nul transitions can be ignored
       if (!transition) {
@@ -1162,7 +1275,7 @@ private:
 
     bool has_removed_dup = false;
 
-    for (auto noderef = m_nodes.rbegin(); noderef < m_nodes.rend() - 1; noderef++) {
+    for (auto noderef = _m_nodes.rbegin(); noderef < _m_nodes.rend() - 1; noderef++) {
       if (noderef->is_null()) {
         continue;
       }
@@ -1170,7 +1283,7 @@ private:
       auto& node    = *noderef;
       auto node_idx = node_index(node);
       // check if another node with the exact same data exists
-      auto other_node = std::find_if(m_nodes.begin(), noderef.base() - 1, [&node, this, node_idx](Node_T& other) {
+      auto other_node = std::find_if(_m_nodes.begin(), noderef.base() - 1, [&node, this, node_idx](Node_T& other) {
         // We also consider nodes to be equal if transitions are self-referring
 
 
@@ -1206,7 +1319,7 @@ private:
         auto new_idx = node_index(node);
         auto old_idx = node_index(*other_node);
 
-        for (auto& n : m_nodes) {
+        for (auto& n : _m_nodes) {
           for (auto& tzn : n.transitions) {
             if (tzn == old_idx) {
               tzn = new_idx;
@@ -1223,19 +1336,23 @@ private:
   }
 
   void nullify_orphans() {
-    std::vector<bool> reachables(m_nodes.size(), false);
+    std::vector<bool> reachables(_m_nodes.size(), false);
     reachables[0] = true;
 
     while (true) {
       bool has_expanded = false;
-      for (Node_T& n : m_nodes) {
-        if (reachables[node_index(n)]) {
+      for (Node_T& n : _m_nodes) {
+        if (reachables[node_index(n) - 1]) {
           for (auto t : n.transitions) {
-            if (reachables[t]) {
+            if (t == 0) {
               continue;
             }
-            reachables[t] = true;
-            has_expanded  = true;
+            const size_t corrected_transition = t - 1;
+            if (reachables[corrected_transition]) {
+              continue;
+            }
+            reachables[corrected_transition] = true;
+            has_expanded                     = true;
           }
         }
       }
@@ -1244,38 +1361,42 @@ private:
       }
     }
 
-    for (auto& n : m_nodes) {
-      if (!reachables[node_index(n)]) {
-        n.nullify();
+    for (auto i = 0; i < _m_nodes.size(); i++) {
+      if (reachables[i]) {
+        // _m_nodes[i].nullify();
       }
     }
   }
 
   void remove_blanks() {
     // remove any nodes containing no data, and clear all references to them
-    // also removes orphaned nodes
     std::vector<Node_T> new_nodes;
-    std::vector<size_t> mappings(m_nodes.size(), 0);
-    size_t idx = 0;
-    for (auto& node : m_nodes) {
-      if ((node.is_null()) && node_index(node) != 0) {
+    std::vector<size_t> mappings(_m_nodes.size(), 0);
+    size_t idx = 1;
+    for (auto& node : _m_nodes) {
+
+      // do not bother if the node is null, but leave it if its the root
+      if ((node.is_null()) && node_index(node) != 1) {
         continue;
       }
       new_nodes.push_back(node);
 
-      mappings[node_index(node)] = idx;
+      mappings[node_index(node) - 1] = idx;
       idx++;
     }
 
     for (auto& n : new_nodes) {
       for (auto& t : n.transitions) {
-        t = mappings[t];
+        if (t == 0) {
+          continue;
+        }
+        t = mappings[t - 1];
       }
     }
-    m_nodes = new_nodes;
+    _m_nodes = new_nodes;
   }
 };
 
 using MutableRegex = MutableStateMachine<void>;
 
-}; // namespace regex_table
+}; // namespace regex_backend
