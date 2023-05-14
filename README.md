@@ -8,7 +8,7 @@
 
 All documentation related to the project is generated from source using docugen
 
-The documentation can be viewed [https://kronsyc.github.io/regex-backend/](Here)
+The documentation can be viewed [On the github pages site](https://kronsyc.github.io/regex-backend/)
 
 ## Building
 
