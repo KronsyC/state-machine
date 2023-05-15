@@ -6,7 +6,7 @@
 
 ## Documentation
 
-All documentation related to the project is generated from source using docugen
+All documentation related to the project is generated from source using doxygen
 
 The documentation can be viewed [On the github pages site](https://kronsyc.github.io/regex-backend/)
 
