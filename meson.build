@@ -1,7 +1,5 @@
 project('regex-backend', 'cpp')
 
-add_global_arguments('-D_GLIBCXX_DEBUG -Wall -Werror -O0 -g', language : 'cpp')
-
 inc = include_directories('include')
 
 mutils_proj = subproject('mutils')

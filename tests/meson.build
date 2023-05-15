@@ -1,5 +1,5 @@
-# Get the testing library
-# catch2_proj = subproject('catch2')
+
+if not meson.is_subproject()
 gtest_dep = dependency('gtest')
 
 
@@ -12,3 +12,5 @@ presets_test = executable('presets_test', 'presets.cc',
 
 test('features', features_test)
 test('presets', presets_test)
+
+endif
