@@ -2,6 +2,7 @@
 #include "regex-backend/builder.h"
 #include "gtest/gtest.h"
 #include "malloc.h"
+
 TEST(presets, numbers) {
 
   auto& match_int = regex_backend::presets::integer;

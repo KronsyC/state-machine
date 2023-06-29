@@ -22,17 +22,15 @@
 
 #pragma once
 
-#include <array>
+#include "./util/aliases.h"
 #include <iostream>
 #include <optional>
 
 namespace regex_backend {
 
-struct StateMachineNodeBase {
+struct SimpleStateMachineNodeBase {
 
-  // 0 -> 127 = Character transitions
-  // 128 = EOF
-  std::array<std::size_t, 129> transitions{};
+  internal::aliases::TransitionSet<size_t> transitions{};
 
   //
   // Some nodes may not want to consume characters
@@ -44,7 +42,7 @@ struct StateMachineNodeBase {
 //
 // A state machine consists of a graph of nodes
 //
-template <typename T> struct StateMachineNode : StateMachineNodeBase {
+template <typename T> struct SimpleStateMachineNode : public SimpleStateMachineNodeBase {
 
   //
   // The optional value that the node may carry
@@ -56,15 +54,12 @@ template <typename T> struct StateMachineNode : StateMachineNodeBase {
   //
   std::optional<T> value;
 
-  StateMachineNode(){
-    transitions.fill(0);
-  }
   bool can_exit() const {
 
     return value.has_value();
   }
 
-  bool operator==(StateMachineNode const& other) const {
+  bool operator==(SimpleStateMachineNode const& other) const {
     return transitions == other.transitions && consume_char == other.consume_char && value == other.value;
   }
 
@@ -94,7 +89,7 @@ template <typename T> struct StateMachineNode : StateMachineNodeBase {
 // A pure regex node is equivalent to the specialization
 // StateMachineNode<void>
 //
-template <> struct StateMachineNode<void> : StateMachineNodeBase {
+template <> struct SimpleStateMachineNode<void> : public SimpleStateMachineNodeBase {
 
   //
   // This value represents if the expression is allowed
@@ -124,11 +119,10 @@ template <> struct StateMachineNode<void> : StateMachineNodeBase {
     terminal = false;
   }
 
-  bool operator==(StateMachineNode<void> const other) const {
+  bool operator==(SimpleStateMachineNode<void> const other) const {
     return terminal == other.terminal && transitions == other.transitions;
   }
 };
 
-using RegexNode = StateMachineNode<void>;
 
 }; // namespace regex_backend

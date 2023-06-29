@@ -20,6 +20,7 @@
 ///
 
 #include "regex-backend/builder.h"
+#include "regex-backend/state_machine.h"
 #include <gtest/gtest.h>
 
 using namespace regex_backend;
@@ -77,8 +78,6 @@ TEST(features, match_sequence) {
   ASSERT_TRUE(regex.matches("barbaz")) << "correctly matches";
   ASSERT_TRUE(regex.matches("baz")) << "correctly matches";
   ASSERT_TRUE(regex.matches("")) << "correctly matches empty string";
-
-
 }
 
 TEST(features, match_optional) {
@@ -113,11 +112,39 @@ TEST(features, match_many_optional) {
   ASSERT_TRUE(test.matches("alphabet..done")) << "Matches none";
 
   ASSERT_FALSE(test.matches("alphabet.alphabet.done")) << "Does not match non-conforming string\n";
+
 }
-
-
 
 int main() {
   testing::InitGoogleTest();
   return RUN_ALL_TESTS();
+  StateMachine<void, char> letter;
+  letter.match_alpha().exit_point().optimize();
+
+  // return 0;
+  StateMachine<void, char> word;
+  word.match_many(letter).exit_point();
+  word.optimize();
+
+
+  StateMachine<void, char> wordspace;
+  wordspace.match(word).match_whitespace().exit_point();
+  wordspace.optimize();
+
+  StateMachine<void, char> foo;
+  foo.match_many_optionally(wordspace).match(word);
+  foo.exit_point();
+
+
+  StateMachine<void, char> bar;
+  bar.match(foo);
+  bar.match_any_of("A").match_any_of("B").match_any_of("C");
+  bar.exit_point();
+  bar.optimize();
+  bar.print_dbg();
+  // sm.exit_point();
+  // sm.optimize();
+  // sm.print_dbg();
+  // sm.print_dbg();
+  return 0;
 }

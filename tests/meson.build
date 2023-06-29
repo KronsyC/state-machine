@@ -1,4 +1,3 @@
-
 if not meson.is_subproject()
 gtest_dep = dependency('gtest')
 

@@ -94,8 +94,8 @@ private:
   using MutableRegex            = MutableStateMachine<void>;
 
   Node_T& get_node(size_t number) {
-    MUTILS_ASSERT(number != 0, "Attempt to load a null transition");
-    MUTILS_ASSERT(number <= _m_nodes.size(), "Attempt to access an out-of-range node");
+    MUTILS_ASSERT_NEQ(number, 0, "Attempt to load a null transition");
+    MUTILS_ASSERT_LTE(number, _m_nodes.size(), "Attempt to access an out-of-range node");
     return _m_nodes[number - 1];
   }
 
@@ -206,10 +206,10 @@ public:
     auto& pattern_root = pattern.root();
     //
     // // Transform the newly written regex into a cycle
-    for(auto c : res.terminals){
+    for (auto c : res.terminals) {
       int transition = 0;
-      for(auto tzn : pattern_root.transitions){
-        if(!tzn){
+      for (auto tzn : pattern_root.transitions) {
+        if (!tzn) {
           transition++;
           continue;
         }
@@ -223,11 +223,12 @@ public:
     for (auto c : m_cursors) {
       int transition = 0;
       for (auto tzn : pattern_root.transitions) {
-        if(!tzn){
+        if (!tzn) {
           transition++;
           continue;
         }
-        // std::cout << "Make transition " << c << " -> " << res.mappings[tzn] << " via " << stringify_char(transition) << "\n";
+        // std::cout << "Make transition " << c << " -> " << res.mappings[tzn] << " via " << stringify_char(transition)
+        // << "\n";
         make_nonambiguous_link(c, transition, res.mappings[tzn], {});
         transition++;
       }
@@ -238,7 +239,7 @@ public:
     for (auto c : cursors_before) {
       m_cursors.push_back(c);
     }
-    for(auto c : res.terminals){
+    for (auto c : res.terminals) {
       m_cursors.push_back(c);
     }
 
@@ -962,8 +963,8 @@ private:
   std::vector<size_t>
       make_nonambiguous_link(size_t from, int transition_char, size_t to, std::vector<size_t> watch_nodes) {
 
-    MUTILS_ASSERT(to != 0, "Tried to link to a null node");
-    MUTILS_ASSERT(from != 0, "Tried to link from a null node");
+    MUTILS_ASSERT_NEQ(to, 0, "Tried to link to a null node");
+    MUTILS_ASSERT_NEQ(from, 0, "Tried to link from a null node");
     // The pre-existing transitioned node
     auto tzn = get_node(from).transitions[transition_char];
     if (!tzn) {
@@ -981,8 +982,8 @@ private:
 
 
     auto& node = new_node();
-    auto nidx = node_index(node);
-    node      = get_node(tzn);
+    auto nidx  = node_index(node);
+    node       = get_node(tzn);
 
     // fix self-references
     for (auto t : node.transitions) {
@@ -1145,7 +1146,7 @@ private:
 
     const size_t base_index = _m_nodes.size() - 1;
     auto result             = copy_in_regex_except_root(regex);
-    auto terminals = result.terminals;
+    auto terminals          = result.terminals;
 
     std::array<size_t, 129> new_root_transitions;
 
@@ -1285,7 +1286,7 @@ private:
       // check if another node with the exact same data exists
       auto other_node = std::find_if(_m_nodes.begin(), noderef.base() - 1, [&node, this, node_idx](Node_T& other) {
         // We also consider nodes to be equal if transitions are self-referring
-
+        if(other.is_null())return false;
 
         if (node.consume_char != other.consume_char) {
           return false;
@@ -1309,12 +1310,13 @@ private:
           if (ntzn != otzn && !are_both_self_referring) {
             return false;
           }
-          // if(ntzn != otzn) return false;
+          if(ntzn != otzn) return false;
         }
         return true;
       });
 
-      if (other_node != noderef.base() - 1 && !other_node->is_null()) {
+      // if a node was found (not equal to end iterator)
+      if (other_node != noderef.base() - 1) {
 
         auto new_idx = node_index(node);
         auto old_idx = node_index(*other_node);
