@@ -182,8 +182,48 @@ public:
     std::vector<size_t> new_cursors;
     auto initial_cursors = construction_state.cursors;
     for (auto choice : options) {
-      cursor_discreet_transition(Node_T::Key_T::value(choice));
 
+      if constexpr (IS_UTF8) {
+
+        constexpr char32_t byte = 0xFF;
+        // constexpr char32_t byte_msb = 128;
+
+        // constexpr char32_t byte_dropbit = byte_msb >> 1;
+        constexpr char32_t drop_mask = 0b10111111;
+
+
+        char32_t key = choice;
+        // the key is treated as an array of 4 utf8 bytes
+
+        if (key & (byte << 24)) {
+          // 4-wide utf8 char
+          std::cout << "QUAD\n";
+          cursor_discreet_transition(Node_T::Key_T::value((key >> 24) & drop_mask));
+          cursor_discreet_transition(Node_T::Key_T::value((key >> 16) & drop_mask));
+          cursor_discreet_transition(Node_T::Key_T::value((key >> 8) & drop_mask));
+          cursor_discreet_transition(Node_T::Key_T::value(key & drop_mask));
+
+        } else if (key & (byte << 16)) {
+          // 3-wide utf8 char
+          std::cout << "TRIPLE\n";
+          cursor_discreet_transition(Node_T::Key_T::value((key >> 16) & drop_mask));
+          cursor_discreet_transition(Node_T::Key_T::value((key >> 8) & drop_mask));
+          cursor_discreet_transition(Node_T::Key_T::value(key & drop_mask));
+        } else if (key & (byte << 8)) {
+          // 2-wide utf8 char
+          std::cout << "DOUBLE\n";
+          cursor_discreet_transition(Node_T::Key_T::value((key >> 8) & drop_mask));
+          cursor_discreet_transition(Node_T::Key_T::value(key & drop_mask));
+        } else {
+          // 1-wide utf8 char  / treat as regular ascii character
+          MUTILS_ASSERT((key & 128) == 0, "The MSB was found to be set in an ascii character");
+          cursor_discreet_transition(Node_T::Key_T::value(key));
+        }
+      } else {
+
+        cursor_discreet_transition(Node_T::Key_T::value(choice));
+      }
+      // gather all the new cursors
       std::for_each(construction_state.cursors.begin(), construction_state.cursors.end(), [&](auto c) {
         new_cursors.push_back(c);
       });
@@ -885,12 +925,12 @@ protected:
   /// a lot of behavior derived from make_nonambiguous_link
   ///
   void cursor_discreet_transition(typename Node_T::Key_T transition) {
+    std::cout << "cursor_discreet_transition ::: " << std::string(transition) << "\n";
     std::vector<size_t> cursors_with_child;
     std::vector<size_t> cursors_without_child;
     std::vector<size_t> new_cursors;
-    std::cout << "Discreet transition via " << std::string(transition) << "\n";
+
     for (auto cursor : construction_state.cursors) {
-      std::cout << "CURSOR :: " << cursor << "\n";
       auto& current_target = get_node(cursor).transition(transition);
 
       // if non-existant, we can go directly to def
@@ -905,6 +945,7 @@ protected:
       auto default_idx = node_index(new_node());
       new_cursors.push_back(default_idx);
       for (auto cur : cursors_without_child) {
+
         get_node(cur).transition(transition) = default_idx;
       }
     }
@@ -918,8 +959,6 @@ protected:
         intermediary       = get_node(old_target);
         auto inter_idx     = node_index(intermediary);
 
-        std::cout << "Cloned from #" << old_target << "\n";
-        std::cout << "Transition refers to #" << intermediary.transition(transition) << "\n";
 
         //
         // If the old transition used to refer immediately to itself

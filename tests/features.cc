@@ -118,33 +118,4 @@ TEST(features, match_many_optional) {
 int main() {
   testing::InitGoogleTest();
   return RUN_ALL_TESTS();
-  StateMachine<void, char> letter;
-  letter.match_alpha().exit_point().optimize();
-
-  // return 0;
-  StateMachine<void, char> word;
-  word.match_many(letter).exit_point();
-  word.optimize();
-
-
-  StateMachine<void, char> wordspace;
-  wordspace.match(word).match_whitespace().exit_point();
-  wordspace.optimize();
-
-  StateMachine<void, char> foo;
-  foo.match_many_optionally(wordspace).match(word);
-  foo.exit_point();
-
-
-  StateMachine<void, char> bar;
-  bar.match(foo);
-  bar.match_any_of("A").match_any_of("B").match_any_of("C");
-  bar.exit_point();
-  bar.optimize();
-  bar.print_dbg();
-  // sm.exit_point();
-  // sm.optimize();
-  // sm.print_dbg();
-  // sm.print_dbg();
-  return 0;
 }

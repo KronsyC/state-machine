@@ -107,8 +107,28 @@ public:
     switch (kind) {
       case Eof: return "<EOF>";
       case Def: return "<Default>";
-      case Val: return mutils::stringify(val.value());
+      case Val:
+        if constexpr (std::is_same_v<Key_T, char32_t>) {
+          auto v = val.value();
+          if(v & 0b10000000){
+            std::stringstream ss1;
+            std::stringstream ss2;
+            // re-introduce the drop bit and convert to hex
+            ss1 << std::hex << (int)(v | 0b01000000);
+            ss2 << std::hex << (int)(v);
+            return "\\0x" + ss1.str() + " (header) OR " + "\\0x"+ss2.str() + " (data) (compressed utf8 encoding)";
+          }
+          else{
+            return mutils::stringify((char)v);
+          }
+        } else {
+          return mutils::stringify(val.value());
+        }
     }
+  }
+
+  Key_T key_val() const {
+    MUTILS_ASSERT_EQ(kind, kind.Val, "Cannot get key_val of non-val transition");
   }
 };
 
@@ -177,21 +197,21 @@ public:
     std::vector<TransitionInfo> ret;
     if (eof_transition != 0) {
       TransitionInfo ti;
-      ti.to = eof_transition;
+      ti.to  = eof_transition;
       ti.key = Key_T::eof();
       ret.push_back(ti);
     }
 
     if (default_transition != 0) {
       TransitionInfo ti;
-      ti.to = default_transition;
+      ti.to  = default_transition;
       ti.key = Key_T::def();
       ret.push_back(ti);
     }
     for (auto [k, v] : transitions) {
       if (v != 0) {
         TransitionInfo ti;
-        ti.to = v;
+        ti.to  = v;
         ti.key = Key_T::value(v);
         ret.push_back(ti);
       }
