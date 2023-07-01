@@ -197,7 +197,6 @@ public:
 
         if (key & (byte << 24)) {
           // 4-wide utf8 char
-          std::cout << "QUAD\n";
           cursor_discreet_transition(Node_T::Key_T::value((key >> 24) & drop_mask));
           cursor_discreet_transition(Node_T::Key_T::value((key >> 16) & drop_mask));
           cursor_discreet_transition(Node_T::Key_T::value((key >> 8) & drop_mask));
@@ -205,13 +204,11 @@ public:
 
         } else if (key & (byte << 16)) {
           // 3-wide utf8 char
-          std::cout << "TRIPLE\n";
           cursor_discreet_transition(Node_T::Key_T::value((key >> 16) & drop_mask));
           cursor_discreet_transition(Node_T::Key_T::value((key >> 8) & drop_mask));
           cursor_discreet_transition(Node_T::Key_T::value(key & drop_mask));
         } else if (key & (byte << 8)) {
           // 2-wide utf8 char
-          std::cout << "DOUBLE\n";
           cursor_discreet_transition(Node_T::Key_T::value((key >> 8) & drop_mask));
           cursor_discreet_transition(Node_T::Key_T::value(key & drop_mask));
         } else {
@@ -925,7 +922,6 @@ protected:
   /// a lot of behavior derived from make_nonambiguous_link
   ///
   void cursor_discreet_transition(typename Node_T::Key_T transition) {
-    std::cout << "cursor_discreet_transition ::: " << std::string(transition) << "\n";
     std::vector<size_t> cursors_with_child;
     std::vector<size_t> cursors_without_child;
     std::vector<size_t> new_cursors;

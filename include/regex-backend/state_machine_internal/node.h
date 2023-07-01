@@ -127,9 +127,6 @@ public:
     }
   }
 
-  Key_T key_val() const {
-    MUTILS_ASSERT_EQ(kind, kind.Val, "Cannot get key_val of non-val transition");
-  }
 };
 
 //////////////////////////////////////////////////////////////
