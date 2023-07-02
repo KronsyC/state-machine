@@ -28,6 +28,8 @@
 #include "mutils/stringify.h"
 #include <algorithm>
 #include <concepts>
+#include <cstddef>
+#include <span>
 #include <type_traits>
 #include <vector>
 
@@ -58,8 +60,6 @@ template <typename Value_T,                  // Type of values held at regex loo
           >
 class StateMachine {
 
-  // static_assert(std::is_base_of_v<StateMachine, Self>, "Self arg must extend StateMachine");
-  // using Concrete_Transition_T = std::conditional_t<std::is_same_v<Transition_T, utf8char>, char, Transition_T>;
 
   // Is there a value type defined?
   // If not, this class operates as a plain regex builder
@@ -169,7 +169,7 @@ public:
     requires IS_DYNAMIC
   {
     for (auto part : seq) {
-      cursor_transition(Node_T::Key_T::value(part));
+      match_any_of({part});
     }
     return *(Self*)this;
   }
@@ -227,14 +227,6 @@ public:
       construction_state.cursors = initial_cursors;
     }
     construction_state.cursors = new_cursors;
-    // for (auto choice : options) {
-    // transition, and update cursors
-    // cursor_transition(Node_T::Key_T::value(choice));
-    //
-    // make_nonambiguous_link(, typename Node_T::Key_T transition, size_t to, std::vector<size_t> watch_nodes)
-    // for (auto c : construction_state.cursors) {
-    // new_cursors.push_back(c);
-    // }
     return *(Self*)this;
   };
 
@@ -266,7 +258,6 @@ public:
       // this is done by treating all of the terminals as the original root
       // referring back into the graph
       for (auto terminal : res.terminals) {
-        // std::cout << "create transition: " << terminal << " -> " << new_transition << "\n";
         make_nonambiguous_link(terminal, key, new_transition, {});
       }
     });
@@ -397,6 +388,161 @@ public:
     return *(Self_T*)this;
   }
 
+  ////////////////////////////////////////////////////
+  /// STATE MACHINE LOOKUP / SEARCH FUNCTIONALITIES
+  ////////////////////////////////////////////////////
+
+
+  // Return type declarations
+
+
+  ///
+  /// The result of a matched pattern utilizing the find()
+  /// function
+  ///
+  template <typename Val_T> struct find_result_t {
+    std::span<Transition_T> range;
+    Val_T const& val;
+  };
+
+  template <> struct find_result_t<void> {
+    std::span<Transition_T> range;
+  };
+
+  using find_result = find_result_t<Value_T>;
+
+  ///
+  /// Attempt to locate an instance of the state machine pattern within
+  /// the input range
+  ///
+  /// the instance located is the first one found
+  /// if the input can be partially matched by an earlier terminal point, the machine will first search as deeply as
+  /// possible to ensure that no greater match can happen before yielding it
+  ///
+  find_result find(std::span<Transition_T> input) const {
+    size_t current_node               = 1;
+    size_t most_specific_matched_node = 0;
+    size_t match_begin                = 0;
+    size_t match_end                  = 0;
+    for (size_t i = 0; i < input.size(); i++) {
+      auto& transition = input[i];
+      std::cout << "::> " << transition << " - ";
+      auto& node = m_nodes[current_node - 1];
+
+      auto loc = node.rt_get_transition(transition);
+
+      if (loc != 0) {
+        // go one iteration deeper and continue
+        current_node = loc;
+
+        std::cout << "next ";
+        // update the most specific node
+        if (m_nodes[current_node - 1].value.has_value()) {
+          std::cout << "exit";
+          most_specific_matched_node = current_node;
+          match_end                  = i + 1;
+        }
+      } else if (most_specific_matched_node == 0) {
+        // reset the current_node, and try to match from scratch
+        current_node = 1;
+        match_begin  = i + 1;
+        match_end    = i + 1;
+        std::cout << "rematch \n";
+        continue;
+      } else if (most_specific_matched_node != 0) {
+        // we have a match, just return that
+        std::cout << "\n";
+        break;
+      }
+      std::cout << "\n";
+    }
+
+    if (most_specific_matched_node) {
+      auto& node = m_nodes[most_specific_matched_node - 1];
+      // std::cout << "match between " << match_begin << " and " << match_end << "\n";
+      auto& val = node.value.value();
+      match_end -= val.back_by;
+      find_result res;
+      if constexpr (!IS_REGEX) {
+        res.val = val.value;
+      }
+
+      res.range = std::span<Transition_T>(input.begin() + match_begin, input.begin() + match_end);
+
+      return res;
+    } else {
+      find_result res;
+      return res;
+    }
+  };
+
+  ///
+  /// Apply the find function many times over the data to gather all find results
+  /// and returns an iterator which generates each result
+  ///
+  /// NOTE: It is generally recommended to implement this yourself, as this function is only designed
+  /// for the most generic use-case and creates allocations
+  ///
+  auto find_many(std::span<Transition_T> input) const {
+    struct ResultGeneratorIterator {
+      using iterator_concept [[maybe_unused]] = std::contiguous_iterator_tag;
+      using difference_type                   = find_result;
+      using element_type                      = find_result;
+      using pointer                           = find_result*;
+      using reference                         = find_result&;
+
+    private:
+      StateMachine const* machine;
+      std::span<Transition_T> data;
+      find_result next;
+
+      void load_next() {
+        next = machine->find(data);
+        if (next.range.size() == 0) {
+          data = {};
+        } else {
+          data = {next.range.end(), data.end()};
+        }
+      }
+
+    public:
+      ResultGeneratorIterator(StateMachine const* m, std::span<Transition_T> data) : machine(m), data(data) {
+        load_next();
+      };
+
+      void operator++() {
+        load_next();
+      }
+
+      find_result const& operator*() const {
+        return next;
+      }
+
+      bool operator!=(ResultGeneratorIterator const& other) const {
+        return other.data.size() != data.size();
+      }
+    };
+
+    struct ResultGenerator {
+    private:
+      ResultGeneratorIterator _begin;
+      ResultGeneratorIterator _end;
+
+    public:
+      ResultGenerator(StateMachine const* sm, std::span<Transition_T> sp) : _begin({sm, sp}), _end({nullptr, {}}) {
+      }
+
+      auto begin() const {
+        return _begin;
+      }
+
+      auto end() const {
+        return _end;
+      }
+    };
+
+    return ResultGenerator(this, input);
+  };
 
 protected:
   ///
@@ -924,19 +1070,26 @@ protected:
   void cursor_discreet_transition(typename Node_T::Key_T transition) {
     std::vector<size_t> cursors_with_child;
     std::vector<size_t> cursors_without_child;
+    std::vector<size_t> cursors_with_default;
     std::vector<size_t> new_cursors;
 
     for (auto cursor : construction_state.cursors) {
       auto& current_target = get_node(cursor).transition(transition);
 
-      // if non-existant, we can go directly to def
-      if (!current_target) {
+      // if non-existant, we can write the transition directly
+      // but if a default transition exists, the rules change
+      if (get_node(cursor).def()) {
+        cursors_with_default.push_back(cursor);
+      } else if (!current_target) {
         cursors_without_child.push_back(cursor);
       } else {
         cursors_with_child.push_back(cursor);
       }
     }
 
+    ///
+    /// Handle cursors without the child
+    ///
     if (cursors_without_child.size()) {
       auto default_idx = node_index(new_node());
       new_cursors.push_back(default_idx);
@@ -971,6 +1124,49 @@ protected:
         // finally, rereference the cursor transition to point to the newly created intermediary
         get_node(cursor).transition(transition) = inter_idx;
         new_cursors.push_back(inter_idx);
+      }
+    }
+
+    if (cursors_with_default.size()) {
+
+      struct CloneInfo {
+        size_t node;
+        size_t clone_from;
+      };
+
+      std::vector<CloneInfo> clone_tasks;
+      for (auto cursor : cursors_with_default) {
+
+        auto old_transition = get_node(cursor).transition(transition);
+
+
+        if (old_transition) {
+          // pre-existing transition
+          auto default_idx  = get_node(cursor).def();
+          auto replacements = make_nonambiguous_link(cursor, transition, default_idx, {default_idx});
+          MUTILS_ASSERT_GT(replacements.size(), 0, "No replacements were created for the default_idx watchnode");
+          auto intermediary = replacements[0];
+          new_cursors.push_back(intermediary);
+
+        } else {
+          // create the intermediary
+          auto intermediary = node_index(new_node());
+          // transition into the intermediary
+          get_node(cursor).transition(transition) = intermediary;
+
+          CloneInfo ci;
+          ci.node       = intermediary;
+          ci.clone_from = get_node(cursor).def();
+          clone_tasks.push_back(ci);
+          new_cursors.push_back(intermediary);
+        }
+      }
+
+      for (CloneInfo ci : clone_tasks) {
+        // Clone all the default transitions into the new intermediaries
+        // this has to be done in a separate stage to allow cross-dependencies to properly operate
+
+        get_node(ci.node) = get_node(ci.clone_from);
       }
     }
     construction_state.cursors = new_cursors;

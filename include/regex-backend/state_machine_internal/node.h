@@ -245,6 +245,19 @@ public:
       case key.Val: return transitions[key.val.value()];
     }
   }
+
+  __attribute__((always_inline))
+  size_t rt_get_transition(Transition_T key) const{
+    auto result = transitions.find(key);
+
+    if(result != transitions.end()){
+      return *result;
+    }
+    else{
+      // return the default transition
+      return default_transition;
+    }
+  }
 };
 
 ///
@@ -398,6 +411,19 @@ public:
       case key.Val:
         MUTILS_ASSERT_LT(key.val.value(), KEYSPACE_SIZE, "Out of range transition key");
         return transitions[key.val.value()];
+    }
+  }
+  __attribute__((always_inline))
+  size_t rt_get_transition(Transition_T key) const{
+    auto result = transitions[key];
+
+    if(result != 0){
+      return result;
+    }
+    else{
+      // return the default transition
+      // TODO: This changes for a compiled node, as the default transitions are baked into the transition array
+      return transitions[def_idx];
     }
   }
 

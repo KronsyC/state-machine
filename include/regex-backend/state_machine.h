@@ -48,14 +48,19 @@ class StateMachine<Value_T, char, STATIC_NODE_COUNT, TRANSITION_NONTRIVIAL_EQUAL
                                   StateMachine<Value_T, char, STATIC_NODE_COUNT, TRANSITION_NONTRIVIAL_EQUALITY>,
                                   STATIC_NODE_COUNT,
                                   TRANSITION_NONTRIVIAL_EQUALITY> {
-    using Parent = internal::StateMachine<Value_T,
-                                  char,
-                                  StateMachine<Value_T, char, STATIC_NODE_COUNT, TRANSITION_NONTRIVIAL_EQUALITY>,
-                                  STATIC_NODE_COUNT,
-                                  TRANSITION_NONTRIVIAL_EQUALITY>;
+  using Parent = internal::StateMachine<Value_T,
+                                        char,
+                                        StateMachine<Value_T, char, STATIC_NODE_COUNT, TRANSITION_NONTRIVIAL_EQUALITY>,
+                                        STATIC_NODE_COUNT,
+                                        TRANSITION_NONTRIVIAL_EQUALITY>;
+
 public:
   StateMachine& match_any_of(std::string const& options) {
     return match_any_of(options.c_str());
+  }
+
+  StateMachine& match_sequence(std::string const& seq) {
+    return match_sequence(seq.c_str());
   }
 
   StateMachine& match_any_of(char const* options) {
@@ -63,7 +68,16 @@ public:
     for (char const* o = options; *o != 0; o++) {
       v.push_back(*o);
     }
-      Parent::match_any_of(v);
+    Parent::match_any_of(v);
+    return *this;
+  }
+
+  StateMachine& match_sequence(char const* seq) {
+    std::vector<char> v;
+    for (char const* c = seq; *c != 0; c++) {
+      v.push_back(*c);
+    }
+    Parent::match_sequence(v);
     return *this;
   }
 
@@ -155,12 +169,13 @@ class StateMachine<Value_T, char32_t, STATIC_NODE_COUNT, TRANSITION_NONTRIVIAL_E
                                   STATIC_NODE_COUNT,
                                   TRANSITION_NONTRIVIAL_EQUALITY> {
 private:
+  using Parent =
+      internal::StateMachine<Value_T,
+                             char32_t,
+                             StateMachine<Value_T, char32_t, STATIC_NODE_COUNT, TRANSITION_NONTRIVIAL_EQUALITY>,
+                             STATIC_NODE_COUNT,
+                             TRANSITION_NONTRIVIAL_EQUALITY>;
 
-    using Parent = internal::StateMachine<Value_T,
-                                  char32_t,
-                                  StateMachine<Value_T, char32_t, STATIC_NODE_COUNT, TRANSITION_NONTRIVIAL_EQUALITY>,
-                                  STATIC_NODE_COUNT,
-                                  TRANSITION_NONTRIVIAL_EQUALITY>;
   std::vector<char32_t> split_str_as_utf_points(std::string const& s) {
     std::vector<char32_t> data;
 
@@ -212,7 +227,13 @@ private:
 public:
   StateMachine& match_any_of(std::string const& options) {
     std::vector<char32_t> codepoints = split_str_as_utf_points(options);
-      Parent::match_any_of(codepoints);
+    Parent::match_any_of(codepoints);
+    return *this;
+  }
+
+  StateMachine& match_sequence(std::string const& seq) {
+    std::vector<char32_t> codepoints = split_str_as_utf_points(seq);
+    Parent::match_sequence(codepoints);
     return *this;
   }
 
