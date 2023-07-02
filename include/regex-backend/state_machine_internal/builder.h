@@ -426,7 +426,6 @@ public:
     size_t match_end                  = 0;
     for (size_t i = 0; i < input.size(); i++) {
       auto& transition = input[i];
-      std::cout << "::> " << transition << " - ";
       auto& node = m_nodes[current_node - 1];
 
       auto loc = node.rt_get_transition(transition);
@@ -435,10 +434,8 @@ public:
         // go one iteration deeper and continue
         current_node = loc;
 
-        std::cout << "next ";
         // update the most specific node
         if (m_nodes[current_node - 1].value.has_value()) {
-          std::cout << "exit";
           most_specific_matched_node = current_node;
           match_end                  = i + 1;
         }
@@ -447,14 +444,11 @@ public:
         current_node = 1;
         match_begin  = i + 1;
         match_end    = i + 1;
-        std::cout << "rematch \n";
         continue;
       } else if (most_specific_matched_node != 0) {
         // we have a match, just return that
-        std::cout << "\n";
         break;
       }
-      std::cout << "\n";
     }
 
     if (most_specific_matched_node) {
