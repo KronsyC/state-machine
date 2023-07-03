@@ -553,6 +553,63 @@ public:
   using match_result = match_result_t<Value_T>;
 
   ///
+  /// A utility for validating utf sequences
+  ///
+  struct utf_validator {
+    size_t count = 0;
+
+    ///
+    /// The different type of UTF8 errors that may occur
+    ///
+    enum Error {
+      None,
+      OverlappingSequence,
+      StrayByte,
+      TruncatedSequence,
+      InterruptedSequence
+    };
+
+    Error next(char c) {
+      bool const is_utf8 = c & 0b10000000;
+
+      if (is_utf8) {
+        bool const is_header = (c & 0b11000000) == 0b11000000;
+
+        if (is_header && count) {
+          return OverlappingSequence;
+        }
+
+        if (!is_header && !count) {
+          return StrayByte;
+        }
+
+        if (is_header) {
+          count = std::countl_one((unsigned char)c) - 1;
+        } else {
+          count--;
+        }
+        return None;
+      } else {
+        return count ? InterruptedSequence : None;
+      }
+    }
+
+    static char const* err_to_msg(Error err) {
+      switch (err) {
+        case None: return "No error";
+        case OverlappingSequence: return "UTF-8 error: Overlapping Sequence";
+        case TruncatedSequence: return "UTF-8 error: Truncated Sequence by EOF";
+        case StrayByte: return "UTF-8 error: Stray data byte";
+        case InterruptedSequence: return "UTF-8 error: Sequence interruped by ASCII byte";
+      }
+    }
+
+    Error final() {
+      return count ? TruncatedSequence : None;
+    }
+  };
+
+  ///
   /// Attempt to locate an instance of the state machine pattern within
   /// the input range
   ///
@@ -572,40 +629,15 @@ public:
     size_t most_specific_matched_node = 0;
     size_t match_begin                = 0;
     size_t match_end                  = 0;
-    size_t utf8_count                 = 0;
+    utf_validator uv;
     for (size_t i = 0; i < input.size(); i++) {
       auto& transition = input[i];
       auto& node       = m_nodes[current_node - 1];
 
       if constexpr (IS_UTF8) {
-        // we have a utf8 sequence
-        if (transition & 0b10000000) {
-
-          bool const is_utf8_start = (transition & 0b11000000) == 0b11000000;
-
-          if (utf8_count != 0 && is_utf8_start) {
-            // overlapping utf-8 ranges
-            err("An error has occurred while reading a utf8 sequence : a utf8 sequence was cut short by another "
-                "beginning");
-          }
-
-          if (utf8_count == 0 && !is_utf8_start) {
-
-            err("An error has occurred while reading a utf8 sequence : a stray utf8 data byte was found");
-          }
-          if (is_utf8_start) {
-            // determine the size of segments to process
-            auto const ones      = std::countl_one((unsigned char)transition);
-            auto const new_count = ones - 1;
-
-            utf8_count = new_count;
-          } else {
-            // we have a utf8 continuation, i.e 0b10xxxxxx
-            utf8_count--;
-          }
-        } else if (utf8_count) {
-
-          err("An error has occurred while reading a utf8 sequence : a utf8 sequence was terminated early");
+        auto error = uv.next(transition);
+        if (error != utf_validator::None) {
+          err(utf_validator::err_to_msg(error));
         }
       }
 
@@ -634,8 +666,9 @@ public:
     }
 
     if constexpr (IS_UTF8) {
-      if (utf8_count) {
-        err("An error has occurred while reading a utf8 sequence : a utf8 sequence was cut short by the end of input");
+      auto error = uv.final();
+      if (error != utf_validator::None) {
+        err(utf_validator::err_to_msg(error));
       }
     }
 
@@ -757,39 +790,14 @@ public:
       }
     }();
     size_t current    = 1;
-    size_t utf8_count = 0;
+    utf_validator uv;
     for (auto transition : input) {
       auto next = m_nodes[current - 1].rt_get_transition(transition);
 
       if constexpr (IS_UTF8) {
-        // we have a utf8 sequence
-        if (transition & 0b10000000) {
-
-          bool const is_utf8_start = (transition & 0b11000000) == 0b11000000;
-
-          if (utf8_count != 0 && is_utf8_start) {
-            // overlapping utf-8 ranges
-            err("An error has occurred while reading a utf8 sequence : a utf8 sequence was cut short by another "
-                "beginning");
-          }
-
-          if (utf8_count == 0 && !is_utf8_start) {
-
-            err("An error has occurred while reading a utf8 sequence : a stray utf8 data byte was found");
-          }
-          if (is_utf8_start) {
-            // determine the size of segments to process
-            auto const ones      = std::countl_one((unsigned char)transition);
-            auto const new_count = ones - 1;
-
-            utf8_count = new_count;
-          } else {
-            // we have a utf8 continuation, i.e 0b10xxxxxx
-            utf8_count--;
-          }
-        } else if (utf8_count) {
-
-          err("An error has occurred while reading a utf8 sequence : a utf8 sequence was terminated early");
+        auto error = uv.next(transition);
+        if (error != utf_validator::None) {
+          err(utf_validator::err_to_msg(error));
         }
       }
       if (next) {
@@ -800,8 +808,9 @@ public:
     }
 
     if constexpr (IS_UTF8) {
-      if (utf8_count) {
-        err("An error has occurred while reading a utf8 sequence : a utf8 sequence was cut short by the end of input");
+      auto error = uv.final();
+      if(error != utf_validator::None){
+        err(utf_validator::err_to_msg(error));
       }
     }
     if constexpr (INCLUDE_EOF) {
