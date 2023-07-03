@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Samir Bioud
+ // Copyright (c) 2023 Samir Bioud
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -415,7 +415,8 @@ public:
   }
   __attribute__((always_inline))
   size_t rt_get_transition(Transition_T key) const{
-    auto result = transitions[key];
+
+    auto result = UTF8 ? transitions[key & 0b10000000 ? key & 0b10111111 : key] : transitions[key];
 
     if(result != 0){
       return result;

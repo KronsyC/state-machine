@@ -26,33 +26,28 @@
 
 namespace regex_backend {
 
+using MatchErrorMode = internal::MatchErrorMode;
+
 template <typename Value_T,
           typename Transition_T,
-          std::size_t STATIC_NODE_COUNT       = 0,
-          bool TRANSITION_NONTRIVIAL_EQUALITY = true>
+          MatchErrorMode em             = MatchErrorMode::Return,
+          std::size_t STATIC_NODE_COUNT = 0>
 class StateMachine :
-    public internal::StateMachine<
-        Value_T,
-        Transition_T,
-        StateMachine<Value_T, Transition_T, STATIC_NODE_COUNT, TRANSITION_NONTRIVIAL_EQUALITY>,
-        STATIC_NODE_COUNT,
-        TRANSITION_NONTRIVIAL_EQUALITY> {};
+    public internal::StateMachine<Value_T,
+                                  Transition_T,
+                                  StateMachine<Value_T, Transition_T, em, STATIC_NODE_COUNT>,
+                                  STATIC_NODE_COUNT,
+                                  em> {};
 
 ///
 /// Specialization of the StateMachine for char- transitions, which provides many useful matches for various char ranges
 ///
-template <typename Value_T, std::size_t STATIC_NODE_COUNT, bool TRANSITION_NONTRIVIAL_EQUALITY>
-class StateMachine<Value_T, char, STATIC_NODE_COUNT, TRANSITION_NONTRIVIAL_EQUALITY> :
-    public internal::StateMachine<Value_T,
-                                  char,
-                                  StateMachine<Value_T, char, STATIC_NODE_COUNT, TRANSITION_NONTRIVIAL_EQUALITY>,
-                                  STATIC_NODE_COUNT,
-                                  TRANSITION_NONTRIVIAL_EQUALITY> {
-  using Parent = internal::StateMachine<Value_T,
-                                        char,
-                                        StateMachine<Value_T, char, STATIC_NODE_COUNT, TRANSITION_NONTRIVIAL_EQUALITY>,
-                                        STATIC_NODE_COUNT,
-                                        TRANSITION_NONTRIVIAL_EQUALITY>;
+template <typename Value_T, MatchErrorMode em, std::size_t STATIC_NODE_COUNT>
+class StateMachine<Value_T, char, em, STATIC_NODE_COUNT> :
+    public internal::
+        StateMachine<Value_T, char, StateMachine<Value_T, char, em, STATIC_NODE_COUNT>, STATIC_NODE_COUNT, em> {
+  using Parent =
+      internal::StateMachine<Value_T, char, StateMachine<Value_T, char, em, STATIC_NODE_COUNT>, STATIC_NODE_COUNT, em>;
 
 public:
   StateMachine& match_any_of(std::string const& options) {
@@ -161,20 +156,13 @@ public:
 /// essentially encodes utf8 chars as a series of simple transitions, but also
 /// introduces logic for dealing with illegal utf8, and stores it in a slightly more compact format
 ///
-template <typename Value_T, std::size_t STATIC_NODE_COUNT, bool TRANSITION_NONTRIVIAL_EQUALITY>
-class StateMachine<Value_T, char32_t, STATIC_NODE_COUNT, TRANSITION_NONTRIVIAL_EQUALITY> :
-    public internal::StateMachine<Value_T,
-                                  char32_t,
-                                  StateMachine<Value_T, char32_t, STATIC_NODE_COUNT, TRANSITION_NONTRIVIAL_EQUALITY>,
-                                  STATIC_NODE_COUNT,
-                                  TRANSITION_NONTRIVIAL_EQUALITY> {
+template <typename Value_T, MatchErrorMode em, std::size_t STATIC_NODE_COUNT>
+class StateMachine<Value_T, char32_t, em, STATIC_NODE_COUNT> :
+    public internal::
+        StateMachine<Value_T, char32_t, StateMachine<Value_T, char32_t, em, STATIC_NODE_COUNT>, STATIC_NODE_COUNT, em> {
 private:
-  using Parent =
-      internal::StateMachine<Value_T,
-                             char32_t,
-                             StateMachine<Value_T, char32_t, STATIC_NODE_COUNT, TRANSITION_NONTRIVIAL_EQUALITY>,
-                             STATIC_NODE_COUNT,
-                             TRANSITION_NONTRIVIAL_EQUALITY>;
+  using Parent = internal::
+      StateMachine<Value_T, char32_t, StateMachine<Value_T, char32_t, em, STATIC_NODE_COUNT>, STATIC_NODE_COUNT, em>;
 
   std::vector<char32_t> split_str_as_utf_points(std::string const& s) {
     std::vector<char32_t> data;

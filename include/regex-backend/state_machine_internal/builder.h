@@ -25,6 +25,7 @@
 #include "./node.h"
 #include "./node_store.h"
 #include "mutils/assert.h"
+#include "mutils/panic.h"
 #include "mutils/stringify.h"
 #include <algorithm>
 #include <concepts>
@@ -41,12 +42,17 @@ enum ConflictAction {
   Error
 };
 
+enum class MatchErrorMode {
+  Panic, /// Print an error message to stderr and exit the program
+  Return /// Includes error info within the return values of match functions
+};
+
 ///
 /// Here we hold state exclusive to constructible / dynamically allocated state machines
 ///
 template <bool IS_DYNAMIC> struct StateMachineConstructionState {
-  ConflictAction on_conflict = ConflictAction::Error;
-  std::vector<size_t> cursors;
+  ConflictAction on_conflict  = ConflictAction::Error;
+  std::vector<size_t> cursors = {1};
 };
 
 template <> struct StateMachineConstructionState<false> {};
@@ -56,7 +62,9 @@ template <typename Value_T,                  // Type of values held at regex loo
           typename Self,                     // class inheriting the statemachine
           std::size_t STATIC_NODE_COUNT = 0, // The number of internal nodes when allocating statically, set to 0 for
                                              // dynamic allocation or to any integer for static allocation
-          bool TRANSITION_NONTRIVIAL_EQUALITY = true // Set to true if the transition type cannot be compared bytewise
+          MatchErrorMode ON_MATCH_ERROR =
+              MatchErrorMode::Return // The behavior of unrecoverable match errors, such as malformed utf8 sequences
+                                     // This does NOT influence the match result for the case of no match
           >
 class StateMachine {
 
@@ -78,7 +86,7 @@ class StateMachine {
   StateMachineConstructionState<!IS_PREALLOCATED> construction_state;
 
 public:
-  using MutableRegex = StateMachine<void, Transition_T, Self, 0, TRANSITION_NONTRIVIAL_EQUALITY>;
+  using MutableRegex = StateMachine<void, Transition_T, Self, 0, ON_MATCH_ERROR>;
   // using Self_T = Self;
   typedef Self Self_T;
 
@@ -86,7 +94,7 @@ public:
   /// Construct a static state-machine from a pre-existing dynamic one
   ///
   /// Note: You must know the size of the dynamic state machine to construct this
-  constexpr StateMachine(StateMachine<Value_T, Transition_T, Self, 0, TRANSITION_NONTRIVIAL_EQUALITY> from)
+  constexpr StateMachine(StateMachine<Value_T, Transition_T, Self, 0, ON_MATCH_ERROR> from)
     requires(IS_PREALLOCATED)
   {
     MUTILS_ASSERT_EQ(
@@ -104,7 +112,6 @@ public:
   {
     Node_T root;
     m_nodes.push(root);
-    construction_state.cursors = {1};
   };
 
   Self& root()
@@ -395,21 +402,155 @@ public:
 
   // Return type declarations
 
+  template <typename Val_T> struct _input_t {
+    using type = Val_T;
+  };
+
+  template <> struct _input_t<char32_t> {
+    using type = char;
+  };
+
+  using input_t = typename _input_t<Transition_T>::type;
+
+  template <MatchErrorMode em> struct match_maybe_error_t {
+    constexpr static bool MAYBE_ERROR = false;
+  };
+
+  template <> struct match_maybe_error_t<MatchErrorMode::Return> {
+  private:
+    char const* errmsg = nullptr;
+
+  public:
+    constexpr static bool MAYBE_ERROR = true;
+
+    bool is_error() const {
+      return errmsg != nullptr;
+    }
+
+    char const* error_message() const {
+      return errmsg;
+    }
+
+    match_maybe_error_t(char const* dat) : errmsg(dat){};
+    match_maybe_error_t() : errmsg(nullptr){};
+  };
+
+  using match_maybe_error = match_maybe_error_t<ON_MATCH_ERROR>;
 
   ///
   /// The result of a matched pattern utilizing the find()
   /// function
   ///
-  template <typename Val_T> struct find_result_t {
-    std::span<Transition_T> range;
-    Val_T const& val;
+  template <typename Val_T> struct find_result_t : match_maybe_error {
+    std::span<input_t> range;
+    Val_T const* val;
+
+    ///
+    /// verbose error value constructor
+    ///
+    find_result_t(char const* err)
+      requires match_maybe_error::MAYBE_ERROR
+        : match_maybe_error(err), val(nullptr){};
+
+    ///
+    /// error value constructor
+    ///
+    find_result_t()
+      requires(!match_maybe_error::MAYBE_ERROR)
+        : val(nullptr){};
+
+    ///
+    /// value constructor
+    ///
+    find_result_t(std::span<input_t> range, Val_T const* dat) : range(range), val(dat){};
   };
 
-  template <> struct find_result_t<void> {
-    std::span<Transition_T> range;
+  template <> struct find_result_t<void> : match_maybe_error {
+    std::span<input_t> range;
+    ///
+    /// verbose error value constructor
+    ///
+    find_result_t(char const* err)
+      requires match_maybe_error::MAYBE_ERROR
+        : match_maybe_error(err){};
+
+    ///
+    /// error value constructor
+    ///
+    find_result_t()
+      requires(!match_maybe_error::MAYBE_ERROR)
+    = default;
+
+    ///
+    /// value constructor
+    ///
+    find_result_t(std::span<input_t> range) : range(range){};
   };
 
-  using find_result = find_result_t<Value_T>;
+  ///
+  /// The result of a matched pattern utilizing the matches()
+  /// function
+  ///
+  template <typename Val_T> struct match_result_t : match_maybe_error {
+  private:
+    Val_T const* dat = nullptr;
+
+  public:
+    bool success() const {
+      return dat != nullptr;
+    }
+
+    Val_T const* const value() const {
+      return dat;
+    }
+
+    operator bool() const {
+      return success();
+    }
+
+    ///
+    /// verbose error value constructor
+    ///
+    match_result_t(char const* err)
+      requires match_maybe_error::MAYBE_ERROR
+        : match_maybe_error(err), dat(nullptr){};
+
+
+    ///
+    /// value + error constructor
+    ///
+    match_result_t(Val_T const* val) : dat(val){};
+  };
+
+  template <> struct match_result_t<void> : match_maybe_error {
+  private:
+    bool has_value = false;
+
+  public:
+    bool success() const {
+      return has_value;
+    }
+
+    operator bool() const {
+      return success();
+    }
+
+    ///
+    /// verbose error value constructor
+    ///
+    match_result_t(char const* err)
+      requires match_maybe_error::MAYBE_ERROR
+        : match_maybe_error(err), has_value(false){};
+
+
+    ///
+    /// value + error constructor
+    ///
+    match_result_t(bool has_val) : has_value(has_val){};
+  };
+
+  using find_result  = find_result_t<Value_T>;
+  using match_result = match_result_t<Value_T>;
 
   ///
   /// Attempt to locate an instance of the state machine pattern within
@@ -419,14 +560,55 @@ public:
   /// if the input can be partially matched by an earlier terminal point, the machine will first search as deeply as
   /// possible to ensure that no greater match can happen before yielding it
   ///
-  find_result find(std::span<Transition_T> input) const {
+  /// yields an error if any malformed utf8 is found
+  /// returns an empty range if no match could be made
+  ///
+  find_result find(std::span<input_t> input) const {
+#define err(msg)                                                                                                       \
+  if constexpr (ON_MATCH_ERROR == MatchErrorMode::Panic) mutils::PANIC(msg);                                           \
+  else return {msg};
+
     size_t current_node               = 1;
     size_t most_specific_matched_node = 0;
     size_t match_begin                = 0;
     size_t match_end                  = 0;
+    size_t utf8_count                 = 0;
     for (size_t i = 0; i < input.size(); i++) {
       auto& transition = input[i];
-      auto& node = m_nodes[current_node - 1];
+      auto& node       = m_nodes[current_node - 1];
+
+      if constexpr (IS_UTF8) {
+        // we have a utf8 sequence
+        if (transition & 0b10000000) {
+
+          bool const is_utf8_start = (transition & 0b11000000) == 0b11000000;
+
+          if (utf8_count != 0 && is_utf8_start) {
+            // overlapping utf-8 ranges
+            err("An error has occurred while reading a utf8 sequence : a utf8 sequence was cut short by another "
+                "beginning");
+          }
+
+          if (utf8_count == 0 && !is_utf8_start) {
+
+            err("An error has occurred while reading a utf8 sequence : a stray utf8 data byte was found");
+          }
+          if (is_utf8_start) {
+            // determine the size of segments to process
+            auto const ones      = std::countl_one((unsigned char)transition);
+            auto const new_count = ones - 1;
+
+            utf8_count = new_count;
+          } else {
+            // we have a utf8 continuation, i.e 0b10xxxxxx
+            utf8_count--;
+          }
+        } else if (utf8_count) {
+
+          err("An error has occurred while reading a utf8 sequence : a utf8 sequence was terminated early");
+        }
+      }
+
 
       auto loc = node.rt_get_transition(transition);
 
@@ -451,23 +633,35 @@ public:
       }
     }
 
+    if constexpr (IS_UTF8) {
+      if (utf8_count) {
+        err("An error has occurred while reading a utf8 sequence : a utf8 sequence was cut short by the end of input");
+      }
+    }
+
     if (most_specific_matched_node) {
       auto& node = m_nodes[most_specific_matched_node - 1];
-      // std::cout << "match between " << match_begin << " and " << match_end << "\n";
-      auto& val = node.value.value();
+      auto& val  = node.value.value();
       match_end -= val.back_by;
-      find_result res;
+      auto range = std::span<input_t>(input.begin() + match_begin, input.begin() + match_end);
       if constexpr (!IS_REGEX) {
-        res.val = val.value;
+        return find_result(range, &val.value);
+      } else {
+        return find_result(range);
       }
-
-      res.range = std::span<Transition_T>(input.begin() + match_begin, input.begin() + match_end);
-
-      return res;
     } else {
-      find_result res;
-      return res;
+      if constexpr (ON_MATCH_ERROR == MatchErrorMode::Return) {
+        return find_result(nullptr);
+      } else if constexpr (ON_MATCH_ERROR == MatchErrorMode::Panic) {
+        return find_result();
+      } else {
+        []<bool flag = false>() {
+          static_assert(flag, "Variant not handled");
+        }
+        ();
+      }
     }
+#undef err
   };
 
   ///
@@ -475,7 +669,7 @@ public:
   /// and returns an iterator which generates each result
   ///
   /// NOTE: It is generally recommended to implement this yourself, as this function is only designed
-  /// for the most generic use-case and creates allocations
+  /// for the most generic use-case
   ///
   auto find_many(std::span<Transition_T> input) const {
     struct ResultGeneratorIterator {
@@ -487,7 +681,7 @@ public:
 
     private:
       StateMachine const* machine;
-      std::span<Transition_T> data;
+      std::span<input_t> data;
       find_result next;
 
       void load_next() {
@@ -500,7 +694,7 @@ public:
       }
 
     public:
-      ResultGeneratorIterator(StateMachine const* m, std::span<Transition_T> data) : machine(m), data(data) {
+      ResultGeneratorIterator(StateMachine const* m, std::span<input_t> data) : machine(m), data(data) {
         load_next();
       };
 
@@ -523,7 +717,7 @@ public:
       ResultGeneratorIterator _end;
 
     public:
-      ResultGenerator(StateMachine const* sm, std::span<Transition_T> sp) : _begin({sm, sp}), _end({nullptr, {}}) {
+      ResultGenerator(StateMachine const* sm, std::span<input_t> sp) : _begin({sm, sp}), _end({nullptr, {}}) {
       }
 
       auto begin() const {
@@ -537,6 +731,102 @@ public:
 
     return ResultGenerator(this, input);
   };
+
+  ///
+  /// Test the input to check if the entire input matches the state machine
+  /// if so, returns either true or a pointer to the corresponding value
+  ///
+  /// otherwise, returns false or a null pointer
+  ///
+  /// by default, this function does not care about EOF transitions
+  /// you can change this by setting the INCLUDE_EOF template arg to true
+  /// when true, the machine is forced to match an eof at the end, and if there is none,
+  /// then its the same as no match
+  ///
+  /// Note: the back_by setting has no effect in this function
+  ///
+  template <bool const INCLUDE_EOF = false> match_result matches(std::span<input_t> input) {
+#define err(msg)                                                                                                       \
+  if constexpr (ON_MATCH_ERROR == MatchErrorMode::Panic) mutils::PANIC(msg);                                           \
+  else return {msg};
+    constexpr auto null_val = [&]() {
+      if constexpr (IS_REGEX) {
+        return false;
+      } else {
+        return nullptr;
+      }
+    }();
+    size_t current    = 1;
+    size_t utf8_count = 0;
+    for (auto transition : input) {
+      auto next = m_nodes[current - 1].rt_get_transition(transition);
+
+      if constexpr (IS_UTF8) {
+        // we have a utf8 sequence
+        if (transition & 0b10000000) {
+
+          bool const is_utf8_start = (transition & 0b11000000) == 0b11000000;
+
+          if (utf8_count != 0 && is_utf8_start) {
+            // overlapping utf-8 ranges
+            err("An error has occurred while reading a utf8 sequence : a utf8 sequence was cut short by another "
+                "beginning");
+          }
+
+          if (utf8_count == 0 && !is_utf8_start) {
+
+            err("An error has occurred while reading a utf8 sequence : a stray utf8 data byte was found");
+          }
+          if (is_utf8_start) {
+            // determine the size of segments to process
+            auto const ones      = std::countl_one((unsigned char)transition);
+            auto const new_count = ones - 1;
+
+            utf8_count = new_count;
+          } else {
+            // we have a utf8 continuation, i.e 0b10xxxxxx
+            utf8_count--;
+          }
+        } else if (utf8_count) {
+
+          err("An error has occurred while reading a utf8 sequence : a utf8 sequence was terminated early");
+        }
+      }
+      if (next) {
+        current = next;
+      } else {
+        return null_val;
+      }
+    }
+
+    if constexpr (IS_UTF8) {
+      if (utf8_count) {
+        err("An error has occurred while reading a utf8 sequence : a utf8 sequence was cut short by the end of input");
+      }
+    }
+    if constexpr (INCLUDE_EOF) {
+      // Attempt to transition via eof
+      auto eof = m_nodes[current - 1].get_eof();
+      if (eof) {
+        current = eof;
+      } else {
+        return null_val;
+      }
+    }
+
+    // at this point, we validate that the current node is now a value node
+    if (m_nodes[current - 1].value.has_value()) {
+      if constexpr (IS_REGEX) {
+        return true;
+      } else {
+        return &m_nodes[current - 1].value.value();
+      }
+    } else {
+      return null_val;
+    }
+#undef err
+  }
+
 
 protected:
   ///
